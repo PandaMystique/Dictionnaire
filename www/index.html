@@ -3043,6 +3043,7 @@ body.has-toolbar .focus-toggle { display: none !important; }
 @media (max-width: 768px) { #settingsWidthGroup { display: none; } }
 [data-theme="dark"] .settings-panel { box-shadow: 0 -8px 30px rgba(0,0,0,0.5); }
 </style>
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fr.wikibooks.org; img-src 'self' data: blob:;">
 </head>
 <body>
 
@@ -3392,7 +3393,7 @@ const dictionary = [];
 
 
 // ===== USER ENTRIES =====
-let userEntries = JSON.parse(lsGet('philo-user-entries', '[]'));
+let userEntries = safeParse(lsGet('philo-user-entries', '[]'), []);
 
 function getAllEntries() {
   return [...dictionary, ...userEntries].sort((a, b) => a.term.localeCompare(b.term, 'fr'));
@@ -3406,7 +3407,7 @@ function saveUserEntries() {
 
 // ===== STATE =====
 let currentArticle = null;
-let bookmarks = JSON.parse(lsGet('philo-bookmarks', '[]'));
+let bookmarks = safeParse(lsGet('philo-bookmarks', '[]'), []);
 let showOnlyBookmarks = false;
 let activeLetterFilter = null;
 let activeCategoryFilter = null;
@@ -3416,17 +3417,17 @@ let isMobile = () => window.innerWidth <= 768;
 let mobileViewingArticle = false;
 let editingEntryId = null;
 let massImportRunning = false;
-let readArticles = new Set(JSON.parse(lsGet('philo-read', '[]')));
-let readHistory = JSON.parse(lsGet('philo-history', '[]'));
+let readArticles = new Set(safeParse(lsGet('philo-read', '[]'), []));
+let readHistory = safeParse(lsGet('philo-history', '[]'), []);
 let currentFontSize = parseInt(lsGet('philo-fontsize', '100'));
 let suggestHighlight = -1;
 let navHistory = []; // Stack of article IDs for back navigation
 let sortMode = lsGet('philo-sort', 'alpha'); // alpha, category, unread, recent
 let focusMode = false;
-var articleNotes = JSON.parse(lsGet('philo-notes', '{}'));
-var collections = JSON.parse(lsGet('philo-collections', '{"À relire":[],"Favoris":[]}'));
+var articleNotes = safeParse(lsGet('philo-notes', '{}'), {});
+var collections = safeParse(lsGet('philo-collections', '{"À relire":[],"Favoris":[]}'), {"À relire":[],"Favoris":[]});
 var activeCollection = null;
-var readingStartTimes = JSON.parse(lsGet('philo-reading-times', '{}'));
+var readingStartTimes = safeParse(lsGet('philo-reading-times', '{}'), {});
 var appLineHeight = parseInt(lsGet('philo-line-height', '190'));
 var appTextWidth = parseInt(lsGet('philo-text-width', '680'));
 var appBodyFont = lsGet('philo-body-font', 'serif');
@@ -3436,8 +3437,8 @@ var appAccent = lsGet('philo-accent', 'crimson');
 var tocPanelHeadings = []; // cached for TOC panel
 var appParaSpacing = parseInt(lsGet('philo-para-spacing', '125'));
 var appLettrine = lsGet('philo-lettrine', 'true') === 'true';
-var articleScrollPos = JSON.parse(lsGet('philo-scroll-pos', '{}'));
-var articleHighlights = JSON.parse(lsGet('philo-highlights', '{}'));
+var articleScrollPos = safeParse(lsGet('philo-scroll-pos', '{}'), {});
+var articleHighlights = safeParse(lsGet('philo-highlights', '{}'), {});
 
 // ===== THEME =====
 function initTheme() {
@@ -3611,7 +3612,7 @@ function autoLinkContent(html, currentId) {
     // Match whole word, case insensitive, but not inside HTML tags or already linked
     const regex = new RegExp(`(?<![<\\/\\w"=])\\b(${escaped})\\b(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
     if (regex.test(html)) {
-      html = html.replace(regex, `<a class="auto-link" onclick="navigateTo('${id}')">$1</a>`);
+      html = html.replace(regex, `<a class="auto-link" onclick="navigateTo('${safeId(id)}')">$1</a>`);
       linked.add(id);
     }
   }
@@ -3885,7 +3886,7 @@ function parseMediaWiki(wikitext) {
     }
   }
   
-  return { html, refs: allRefs };
+  return { html: sanitizeHtml(html), refs: allRefs };
 }
 
 function convertWikiLinesToHtml(lines) {
@@ -4745,7 +4746,7 @@ function showSearchSuggestions(query) {
   }
   
   box.innerHTML = results.map((e, i) => `
-    <div class="search-suggestion${i === suggestHighlight ? ' highlighted' : ''}" onmousedown="navigateTo('${e.id}')" data-idx="${i}">
+    <div class="search-suggestion${i === suggestHighlight ? ' highlighted' : ''}" onmousedown="navigateTo('${safeId(e.id)}')" data-idx="${i}">
       <div class="search-suggestion-letter">${e.letter}</div>
       <div class="search-suggestion-text">
         <div class="search-suggestion-title">${e.term}</div>
@@ -4849,9 +4850,10 @@ function importJSON() {
         const existingIds = new Set(userEntries.map(e => e.id));
         let added = 0;
         data.entries.forEach(e => {
-          if (!existingIds.has(e.id)) {
-            userEntries.push(e);
-            existingIds.add(e.id);
+          var validated = validateEntry(e);
+          if (validated && !existingIds.has(validated.id)) {
+            userEntries.push(validated);
+            existingIds.add(validated.id);
             added++;
           }
         });
@@ -4916,7 +4918,7 @@ function checkDuplicate(title) {
   if (!warn || !title.trim()) { if (warn) warn.innerHTML = ''; return; }
   const dup = findDuplicate(title.trim());
   if (dup && (!editingEntryId || dup.id !== editingEntryId)) {
-    warn.innerHTML = `<div class="duplicate-warning">\u26a0 Un article <strong>${dup.term}</strong> existe d\u00e9j\u00e0 dans la cat\u00e9gorie ${dup.category}. <a href="#" onclick="event.preventDefault();navigateTo('${dup.id}')">Voir l\u2019article</a></div>`;
+    warn.innerHTML = `<div class="duplicate-warning">\u26a0 Un article <strong>${dup.term}</strong> existe d\u00e9j\u00e0 dans la cat\u00e9gorie ${dup.category}. <a href="#" onclick="event.preventDefault();navigateTo('${safeId(dup.id)}')">Voir l\u2019article</a></div>`;
   } else {
     warn.innerHTML = '';
   }
@@ -5332,7 +5334,7 @@ function renderEntryList() {
           var ago = Date.now() - h.time;
           var mins = Math.floor(ago / 60000);
           var tStr = mins < 1 ? 'maintenant' : mins < 60 ? mins + 'min' : Math.floor(mins/60) + 'h';
-          recentHtml += '<div class="sidebar-recent-item" onclick="navigateTo(\'' + e.id + '\')"><span class="sidebar-recent-time">' + tStr + '</span> ' + e.term + '</div>';
+          recentHtml += '<div class="sidebar-recent-item" onclick="navigateTo(\'' + safeId(e.id) + '\')"><span class="sidebar-recent-time">' + tStr + '</span> ' + escapeHtml(e.term) + '</div>';
         }
       });
       recentHtml += '</div>';
@@ -5379,7 +5381,7 @@ function renderEntryList() {
       const isBookmarked = bookmarks.includes(entry.id);
       const isUser = entry._userEntry;
       const isRead = readArticles.has(entry.id);
-      html += `<li class="entry-item ${isActive ? 'active' : ''}" onclick="navigateTo('${entry.id}')">
+      html += `<li class="entry-item ${isActive ? 'active' : ''}" onclick="navigateTo('${safeId(entry.id)}')">
         <span class="entry-letter">${isBookmarked ? '\u2605' : isUser ? '\u270e' : entry.letter}</span>
         <div><span class="entry-name">${entry.term}</span><span class="entry-category">${entry.category}</span></div>
         ${!isRead ? '<div class="read-dot" title="Non lu"></div>' : ''}</li>`;
@@ -5464,7 +5466,7 @@ function showArticle(id) {
     const relatedEntries = relatedIds.map(rid => allEntries.find(e => e.id === rid)).filter(Boolean);
     if (relatedEntries.length > 0) {
       relatedHtml = `<div class="article-tags">${relatedEntries.map(r => 
-        `<span class="article-tag" onclick="navigateTo('${r.id}')">${r.term}</span>`).join('')}</div>`;
+        `<span class="article-tag" onclick="navigateTo('${safeId(r.id)}')">${r.term}</span>`).join('')}</div>`;
     }
   }
   
@@ -5480,11 +5482,11 @@ function showArticle(id) {
   
   let navHtml = '<nav class="article-nav">';
   if (prev) {
-    navHtml += '<button class="article-nav-btn prev" onclick="navigateTo(\'' + prev.id + '\')"><div class="nav-label">\u2190 Précédent</div><div class="nav-title">' + prev.term + '</div></button>';
+    navHtml += '<button class="article-nav-btn prev" onclick="navigateTo(\'' + prev.id + '\')"><div class="nav-label">\u2190 Précédent</div><div class="nav-title">' + escapeHtml(prev.term) + '</div></button>';
   }
   navHtml += '<div class="article-nav-center"><button class="article-nav-home" onclick="showWelcome()" title="Accueil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button></div>';
   if (next) {
-    navHtml += '<button class="article-nav-btn next" onclick="navigateTo(\'' + next.id + '\')"><div class="nav-label">Suivant \u2192</div><div class="nav-title">' + next.term + '</div></button>';
+    navHtml += '<button class="article-nav-btn next" onclick="navigateTo(\'' + next.id + '\')"><div class="nav-label">Suivant \u2192</div><div class="nav-title">' + escapeHtml(next.term) + '</div></button>';
   }
   navHtml += '</nav>';
   if (isMobile()) {
@@ -5499,7 +5501,7 @@ function showArticle(id) {
     + '<span class="bc-sep">\u203a</span>'
     + '<a onclick="searchTag(\'' + entry.category.replace(/'/g, "\\'") + '\')">' + entry.category + '</a>'
     + '<span class="bc-sep">\u203a</span>'
-    + '<span class="bc-current">' + entry.term + '</span>'
+    + '<span class="bc-current">' + escapeHtml(entry.term) + '</span>'
     + '</div>';
   var backLinkHtml = '<a class="article-back-link" onclick="' + backAction + '">'
     + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>'
@@ -5543,7 +5545,7 @@ function showArticle(id) {
   
   // Notes
   var noteText = getNote(entry.id);
-  var notesHtml = '<div class="article-notes"><div class="article-notes-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Notes personnelles</div><textarea placeholder="Ajoutez vos notes, r\u00e9flexions, citations\u2026" oninput="saveNote(\'' + entry.id + '\',this.value)">' + escapeHtml(noteText) + '</textarea></div>';
+  var notesHtml = '<div class="article-notes"><div class="article-notes-title"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Notes personnelles</div><textarea placeholder="Ajoutez vos notes, r\u00e9flexions, citations\u2026" oninput="saveNote(\'' + safeId(entry.id) + '\',this.value)">' + escapeHtml(noteText) + '</textarea></div>';
   
   // Share + fiche buttons
   var toolbarHtml = '<div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;margin-top:0.75rem;">' +
@@ -5569,7 +5571,7 @@ function showArticle(id) {
     '      <header class="article-header" style="position:relative;">\n' +
     (entry._userEntry ? '        <button class="article-edit-top" onclick="openEditor(\'' + entry.id + '\')" title="Modifier"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '') + '\n' +
     '        <div class="article-category">' + (isMobile() ? '<span class="mobile-article-category-pill">' + entry.category + '</span>' : entry.category) + userBadge + '</div>\n' +
-    '        <h2 class="article-title">' + entry.term + '</h2>\n' +
+    '        <h2 class="article-title">' + escapeHtml(entry.term) + '</h2>\n' +
     readTimeHtml + '\n' +
     (entry.etymology ? '        <div class="article-etymology">' + entry.etymology + '</div>' : '') + '\n' +
     '        <div class="article-definition">' + entry.definition + '</div>\n' +
@@ -5740,10 +5742,10 @@ function showWelcome() {
   const aotd = getArticleOfDay();
   const aotdExcerpt = aotd ? aotd.definition.replace(/<[^>]+>/g, '').slice(0, 140) : '';
   const aotdHtml = aotd ? `
-    <div class="article-of-day" onclick="navigateTo('${aotd.id}')">
+    <div class="article-of-day" onclick="navigateTo('${safeId(aotd.id)}')">
       <div class="article-of-day-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/></svg> Article du jour</div>
-      <div class="article-of-day-title">${aotd.term}</div>
-      <div class="article-of-day-excerpt">${aotdExcerpt}\u2026</div>
+      <div class="article-of-day-title">${escapeHtml(aotd.term)}</div>
+      <div class="article-of-day-excerpt">${escapeHtml(aotdExcerpt)}\u2026</div>
     </div>` : '';
   
   // Parcours guidés
@@ -5758,11 +5760,11 @@ function showWelcome() {
     <div style="margin-top:1.75rem;">
       <div class="dash-smart-title">${suggestionsIcon} ${suggestionsLabel}</div>
       ${suggestionSource.map(e => `
-        <div class="drawer-entry" onclick="navigateTo('${e.id}')" style="border-radius:10px;margin:0 auto;max-width:420px;border:none;">
+        <div class="drawer-entry" onclick="navigateTo('${safeId(e.id)}')" style="border-radius:10px;margin:0 auto;max-width:420px;border:none;">
           <div class="drawer-entry-letter">${e._userEntry ? '\u270e' : e.letter}</div>
           <div class="drawer-entry-text">
-            <div class="drawer-entry-name">${e.term}</div>
-            <div class="drawer-entry-cat">${e.category}</div>
+            <div class="drawer-entry-name">${escapeHtml(e.term)}</div>
+            <div class="drawer-entry-cat">${escapeHtml(e.category)}</div>
           </div>
           <div class="drawer-entry-arrow">\u203a</div>
         </div>`).join('')}
@@ -5780,7 +5782,7 @@ function showWelcome() {
         const ago = Date.now() - e.time;
         const mins = Math.floor(ago / 60000);
         const timeStr = mins < 1 ? '\u00e0 l\u2019instant' : mins < 60 ? mins + ' min' : Math.floor(mins/60) + ' h';
-        return `<div class="history-item" onclick="navigateTo('${e.id}')"><span class="history-time">${timeStr}</span><span>${e.term}</span></div>`;
+        return `<div class="history-item" onclick="navigateTo('${safeId(e.id)}')"><span class="history-time">${timeStr}</span><span>${escapeHtml(e.term)}</span></div>`;
       }).join('')}
     </div>` : '';
   
@@ -6096,10 +6098,10 @@ function renderDrawerEntries(entries) {
       const isBookmarked = bookmarks.includes(entry.id);
       const isUser = entry._userEntry;
       html += `
-        <div class="drawer-entry" onclick="navigateTo('${entry.id}')">
+        <div class="drawer-entry" onclick="navigateTo('${safeId(entry.id)}')">
           <div class="drawer-entry-letter">${isUser ? '\u270e' : entry.letter}</div>
           <div class="drawer-entry-text">
-            <div class="drawer-entry-name">${entry.term}</div>
+            <div class="drawer-entry-name">${escapeHtml(entry.term)}</div>
             <div class="drawer-entry-cat">${entry.category}</div>
           </div>
           ${isBookmarked ? '<div class="drawer-entry-bookmark">\u2605</div>' : ''}
@@ -6205,7 +6207,7 @@ function buildFicheExpress(entry) {
     html += '<div class="article-tags">';
     related.slice(0,6).forEach(function(rid) {
       var re = all.find(function(a) { return a.id === rid; });
-      if (re) html += '<span class="article-tag" onclick="navigateTo(\'' + re.id + '\')">' + re.term + '</span>';
+      if (re) html += '<span class="article-tag" onclick="navigateTo(\'' + safeId(re.id) + '\')">' + escapeHtml(re.term) + '</span>';
     });
     html += '</div>';
   }
@@ -6560,11 +6562,11 @@ function populateTocPanel() {
     if (ci > 0) {
       html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + allE[ci-1].id + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;margin-bottom:0.3rem;">' +
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
-        allE[ci-1].term + '</a>';
+        escapeHtml(allE[ci-1].term) + '</a>';
     }
     if (ci < allE.length - 1) {
       html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + allE[ci+1].id + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;justify-content:flex-end;">' +
-        allE[ci+1].term +
+        escapeHtml(allE[ci+1].term) +
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     }
     html += '</div>';
@@ -7131,7 +7133,7 @@ var parcoursDefinitions = [
 ];
 
 var activeParcoursId = lsGet('philo-active-parcours', '');
-var parcoursProgress = JSON.parse(lsGet('philo-parcours-progress', '{}'));
+var parcoursProgress = safeParse(lsGet('philo-parcours-progress', '{}'), {});
 
 function getParcoursArticles(parcours) {
   var all = getAllEntries();
@@ -7274,7 +7276,7 @@ function filterNotes(query) {
       excerpt = excerpt.replace(re, '<mark>$1</mark>');
     }
     return '<div class="notes-result" onclick="this.closest(\'.stats-overlay\').remove();navigateTo(\'' + m.entry.id + '\')">' +
-      '<div class="notes-result-term">' + m.entry.term + '</div>' +
+      '<div class="notes-result-term">' + escapeHtml(m.entry.term) + '</div>' +
       '<div class="notes-result-excerpt">' + excerpt + '</div></div>';
   }).join('');
 }
@@ -7324,6 +7326,54 @@ function closeOnboarding() {
   if (overlay) overlay.remove();
   PhiloDB.set('philo-onboarded', 'true');
   try { localStorage.setItem('philo-onboarded', 'true'); } catch(e) {}
+}
+
+// ===== SECURITY HELPERS =====
+function sanitizeHtml(html) {
+  // Remove <script> tags and their content
+  html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
+  // Remove event handlers (onerror, onload, onclick, onmouseover, etc.) 
+  // but keep our own onclick="navigateTo..." and onclick="searchTag..."
+  html = html.replace(/\s+on(error|load|mouseover|mouseout|mouseenter|mouseleave|focus|blur|change|submit|reset|abort)\s*=\s*["'][^"']*["']/gi, '');
+  // Remove javascript: URIs
+  html = html.replace(/href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'href="#"');
+  // Remove data: URIs in src (except images)
+  html = html.replace(/src\s*=\s*["']\s*data:(?!image\/)[^"']*["']/gi, '');
+  // Remove <iframe>, <object>, <embed>, <form>, <input type=hidden>
+  html = html.replace(/<(iframe|object|embed|form|meta|link|base)[\s\S]*?(\/?>|<\/\1>)/gi, '');
+  return html;
+}
+
+function safeId(id) {
+  // Ensure ID is safe for use in onclick="navigateTo('...')"
+  if (typeof id !== 'string') return '';
+  return id.replace(/['"\\<>&]/g, '');
+}
+
+function safeParse(str, fallback) {
+  try { return JSON.parse(str); }
+  catch(e) { return fallback; }
+}
+
+function validateEntry(e) {
+  // Validate entry structure from import
+  if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
+  // Block prototype pollution
+  if ('__proto__' in e || 'constructor' in e || 'prototype' in e) return null;
+  // Required fields
+  if (typeof e.id !== 'string' || typeof e.term !== 'string') return null;
+  // Sanitize content fields
+  if (e.content) e.content = sanitizeHtml(String(e.content));
+  if (e.definition) e.definition = sanitizeHtml(String(e.definition));
+  // Ensure safe types
+  e.id = safeId(e.id);
+  e.term = String(e.term).slice(0, 200);
+  e.category = String(e.category || 'Philosophie').slice(0, 200);
+  e.letter = String(e.letter || e.term.charAt(0).toUpperCase()).slice(0, 1);
+  e.tags = Array.isArray(e.tags) ? e.tags.map(function(t) { return String(t).slice(0, 100); }) : [];
+  e.refs = Array.isArray(e.refs) ? e.refs.map(function(r) { return String(r).slice(0, 2000); }) : [];
+  e.related = Array.isArray(e.related) ? e.related.map(function(r) { return safeId(String(r)); }) : [];
+  return e;
 }
 
 // ===== GLOSSAIRE TRANSVERSAL =====
@@ -7916,8 +7966,8 @@ function initAlphaSlider(strip) {
 }
 
 // ===== CUSTOM TAGS =====
-var customArticleTags = JSON.parse(lsGet('philo-custom-tags', '{}'));
-var allCustomTagNames = JSON.parse(lsGet('philo-all-custom-tags', '[]'));
+var customArticleTags = safeParse(lsGet('philo-custom-tags', '{}'), {});
+var allCustomTagNames = safeParse(lsGet('philo-all-custom-tags', '[]'), []);
 
 function getCustomTags(id) {
   return customArticleTags[id] || [];
@@ -8161,6 +8211,8 @@ async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, sta
       await new Promise(function(resolve, reject) {
         var s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+        s.integrity = 'sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==';
+        s.crossOrigin = 'anonymous';
         s.onload = resolve;
         s.onerror = reject;
         document.head.appendChild(s);
@@ -8484,7 +8536,7 @@ async function checkForUpdates() {
       var dateStr = o.newTimestamp ? new Date(o.newTimestamp).toLocaleDateString('fr-FR') : '?';
       return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border-bottom:1px solid var(--border-light);">' +
         '<input type="checkbox" checked data-update-id="' + o.entry.id + '" data-update-title="' + o.title + '" style="accent-color:var(--accent);">' +
-        '<span style="flex:1;font-size:0.82rem;color:var(--ink);">' + o.entry.term + '</span>' +
+        '<span style="flex:1;font-size:0.82rem;color:var(--ink);">' + escapeHtml(o.entry.term) + '</span>' +
         '<span style="font-family:var(--mono);font-size:0.45rem;color:var(--muted-light);">' + dateStr + '</span>' +
         (o.uncertain ? '<span style="font-family:var(--mono);font-size:0.4rem;color:var(--gold);">?</span>' : '') +
       '</div>';
