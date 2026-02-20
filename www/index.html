@@ -768,7 +768,12 @@ body::before {
 }
 
 .mobile-tab-bar.reading {
-  transform: translateY(100%);
+  opacity: 0.5;
+  transition: opacity 0.3s ease;
+}
+.mobile-tab-bar.reading:active,
+.mobile-tab-bar.reading:focus-within {
+  opacity: 1;
 }
 
 .mobile-tab-bar-inner {
@@ -2419,6 +2424,47 @@ body::before {
 }
 .dash-smart-title svg { opacity: 0.5; }
 
+/* Continue reading card */
+.continue-card {
+  max-width: 420px; margin: 1.25rem auto 0; padding: 0.9rem 1rem;
+  background: linear-gradient(135deg, var(--paper-warm), var(--paper));
+  border: 1px solid var(--accent-light); border-radius: 12px;
+  cursor: pointer; transition: all 0.2s;
+}
+.continue-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px var(--shadow); }
+.continue-label { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); display: flex; align-items: center; gap: 0.3rem; margin-bottom: 0.3rem; }
+.continue-title { font-family: var(--serif); font-size: 1.15rem; font-weight: 500; color: var(--ink); }
+.continue-cat { font-size: 0.78rem; color: var(--muted-light); margin-top: 0.1rem; }
+
+/* Quick action grid */
+.dash-quick {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem;
+  max-width: 380px; margin: 1.25rem auto 0;
+}
+.dash-quick-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 0.3rem;
+  padding: 0.7rem 0.3rem; border-radius: 12px; cursor: pointer;
+  background: var(--paper-warm); border: 1px solid var(--border-light);
+  color: var(--muted); transition: all 0.15s; font-size: 0;
+}
+.dash-quick-btn svg { width: 22px; height: 22px; stroke-width: 1.6; }
+.dash-quick-btn span { font-family: var(--mono); font-size: 0.55rem; letter-spacing: 0.04em; }
+.dash-quick-btn:hover, .dash-quick-btn:active { border-color: var(--accent); color: var(--accent); background: var(--paper); }
+
+/* Tools collapsed section (mobile) */
+.dash-tools-section { margin-top: 1.25rem; text-align: center; }
+.dash-tools-toggle {
+  font-family: var(--mono); font-size: 0.6rem; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted-light); background: none;
+  border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.4rem 0.8rem; border-radius: 20px; transition: color 0.2s;
+}
+.dash-tools-toggle:hover { color: var(--accent); }
+.dash-tools-grid {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem;
+  margin-top: 0.5rem;
+}
+
 /* ===== MINI CONNECTION GRAPH ===== */
 .mini-graph-wrap {
   margin-top: 1.5rem; padding: 1rem 0;
@@ -3083,6 +3129,9 @@ body.has-toolbar .focus-toggle { display: none !important; }
 <div class="mobile-article-bar" id="mobileArticleBar">
   <button class="mobile-back-btn" onclick="mobileBack()">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  </button>
+  <button class="mobile-back-btn" onclick="showWelcome()" title="Accueil" style="margin-left:-0.3rem;margin-right:-0.2rem;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   </button>
   <div class="mobile-article-title" id="mobileArticleTitle"></div>
   <button class="mobile-bookmark-btn" onclick="openTocPanel()" style="margin-right:0;" title="Sommaire">
@@ -4178,6 +4227,123 @@ Paragraphe de texte avec ''italique'' et '''gras'''.
 function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+function downloadBlob(blob, filename, statusEl) {
+  // Detect Capacitor environment
+  var isCap = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform && Capacitor.isNativePlatform();
+  
+  if (isCap) {
+    capDownload(blob, filename, statusEl);
+  } else {
+    desktopDownload(blob, filename, statusEl);
+  }
+}
+
+function capDownload(blob, filename, statusEl) {
+  // Convert blob to base64
+  var reader = new FileReader();
+  reader.onload = function() {
+    var base64 = reader.result.split(',')[1];
+    
+    // Try Filesystem plugin
+    var FS = Capacitor.Plugins.Filesystem;
+    if (FS && FS.writeFile) {
+      // Write to Downloads directory (or Documents, or Cache as fallback)
+      var dirs = ['DOCUMENTS', 'EXTERNAL_STORAGE', 'CACHE'];
+      tryWriteFile(FS, base64, filename, dirs, 0, statusEl);
+    } else {
+      // No Filesystem plugin — try Share
+      capShare(blob, filename, statusEl);
+    }
+  };
+  reader.onerror = function() {
+    if (statusEl) statusEl.textContent = '✗ Erreur de lecture du fichier';
+  };
+  reader.readAsDataURL(blob);
+}
+
+function tryWriteFile(FS, base64, filename, dirs, idx, statusEl) {
+  if (idx >= dirs.length) {
+    // All directories failed — try share
+    if (statusEl) statusEl.textContent = 'Écriture impossible, tentative de partage…';
+    // Reconstruct blob from base64
+    var byteString = atob(base64);
+    var ab = new ArrayBuffer(byteString.length);
+    var ia = new Uint8Array(ab);
+    for (var i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+    var blob = new Blob([ab], { type: 'application/epub+zip' });
+    capShare(blob, filename, statusEl);
+    return;
+  }
+  
+  FS.writeFile({
+    path: 'Download/' + filename,
+    data: base64,
+    directory: dirs[idx],
+    recursive: true
+  }).then(function(result) {
+    if (statusEl) statusEl.textContent = '✓ Enregistré : ' + (result.uri || filename);
+  }).catch(function(err) {
+    console.warn('[Download] writeFile failed for', dirs[idx], err);
+    tryWriteFile(FS, base64, filename, dirs, idx + 1, statusEl);
+  });
+}
+
+function capShare(blob, filename, statusEl) {
+  // Try native Share plugin
+  var Share = Capacitor.Plugins && Capacitor.Plugins.Share;
+  
+  // Also try Web Share API with File
+  if (navigator.share && typeof File !== 'undefined') {
+    try {
+      var file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: filename }).then(function() {
+          if (statusEl) statusEl.textContent = '✓ Fichier partagé';
+        }).catch(function(e) {
+          if (e.name !== 'AbortError' && statusEl) {
+            statusEl.textContent = '✗ Partage annulé ou non disponible';
+          }
+        });
+        return;
+      }
+    } catch(e) { console.warn('[Share] Web Share failed:', e); }
+  }
+  
+  if (statusEl) {
+    statusEl.textContent = '✗ Plugin Filesystem non trouvé. Reconstruisez l\'APK avec : npm install @capacitor/filesystem && npx cap sync android';
+  }
+}
+
+function desktopDownload(blob, filename, statusEl) {
+  if (!blob || blob.size === 0) {
+    if (statusEl) statusEl.textContent = '✗ Erreur : fichier généré vide';
+    return;
+  }
+  
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  
+  if (statusEl) {
+    statusEl.textContent = '✓ Fichier prêt (' + Math.round(blob.size / 1024) + ' Ko) — ';
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.cssText = 'color:var(--accent);text-decoration:underline;font-weight:500;';
+    link.textContent = 'Cliquez ici si le fichier ne s\'est pas téléchargé';
+    statusEl.appendChild(link);
+  }
+  
+  setTimeout(function() {
+    try { document.body.removeChild(a); } catch(e) {}
+    URL.revokeObjectURL(url);
+  }, 300000);
+}
+
 // ===== WIKIBOOKS IMPORT (JSONP — bypasses CORS/sandbox) =====
 function jsonp(url) {
   return new Promise((resolve, reject) => {
@@ -4859,12 +5025,7 @@ function exportJSON() {
     customTagNames: allCustomTagNames
   };
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'dictionnaire-philosophie-' + new Date().toISOString().slice(0, 10) + '.json';
-  a.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(blob, 'dictionnaire-philosophie-' + new Date().toISOString().slice(0, 10) + '.json');
 }
 
 function importJSON() {
@@ -5856,36 +6017,69 @@ function showWelcome() {
       ${allEntries.length} articles \u00b7 ${categories.size} domaines
     </div>`;
   
-  // Quick actions (mobile)
-  const mobileQuickHtml = isMobile() ? `
-    <div class="mobile-quick-actions" style="margin-top:1.5rem;">
-      <div class="mobile-quick-btn" onclick="switchTab('search')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+  // Continue reading card
+  const lastRead = readHistory.length > 0 ? readHistory[0] : null;
+  const lastEntry = lastRead ? allEntries.find(a => a.id === lastRead.id) : null;
+  const continueHtml = lastEntry ? `
+    <div class="continue-card" onclick="navigateTo('${safeId(lastEntry.id)}')">
+      <div class="continue-label"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Continuer la lecture</div>
+      <div class="continue-title">${escapeHtml(lastEntry.term)}</div>
+      <div class="continue-cat">${escapeHtml(lastEntry.category)}</div>
+    </div>` : '';
+
+  // Quick actions (unified)
+  const quickHtml = `
+    <div class="dash-quick">
+      <button class="dash-quick-btn" onclick="${isMobile() ? "switchTab('search')" : "document.getElementById('searchInput').focus()"}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         <span>Recherche</span>
-      </div>
-      <div class="mobile-quick-btn" onclick="switchTab('index')">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+      </button>
+      <button class="dash-quick-btn" onclick="${isMobile() ? "switchTab('index')" : "document.getElementById('alphaNav').scrollIntoView({behavior:'smooth'})"}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
         <span>Index</span>
-      </div>
-      <div class="mobile-quick-btn" onclick="showRandomArticle()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg>
+      </button>
+      <button class="dash-quick-btn" onclick="showRandomArticle()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 3h5v5"/><path d="M4 20L21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
         <span>Hasard</span>
+      </button>
+      <button class="dash-quick-btn" onclick="${isMobile() ? "switchTab('favorites')" : "toggleBookmarkFilter()"}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
+        <span>Favoris</span>
+      </button>
+    </div>`;
+
+  // Tools section (collapsed on mobile)
+  const toolsItems = [];
+  toolsItems.push({l:'Philosophes',i:'\u1f464',a:'showPhilosopherIndex()'});
+  toolsItems.push({l:'Graphe',i:'\u26d4',a:'showGraph()'});
+  toolsItems.push({l:'Glossaire',i:'\u1f4d6',a:'showGlossary()'});
+  toolsItems.push({l:'Stats',i:'\u1f4ca',a:'showStats()'});
+  if (Object.keys(articleNotes).length > 0) toolsItems.push({l:'Notes',i:'\u270f',a:'showNotesSearch()'});
+  if (userEntries.length > 0) toolsItems.push({l:'MàJ' + (pendingUpdatesCount > 0 ? ' <span class="update-badge">' + pendingUpdatesCount + '</span>' : ''),i:'\u21bb',a:'checkForUpdates()'});
+
+  const toolsBtns = toolsItems.map(function(t) { return '<button class="share-btn" onclick="' + t.a + '">' + t.l + '</button>'; }).join('');
+  const toolsHtml = isMobile() ? `
+    <div class="dash-tools-section">
+      <button class="dash-tools-toggle" onclick="var p=this.nextElementSibling;p.style.display=p.style.display==='none'?'flex':'none';this.querySelector('svg').style.transform=p.style.display==='none'?'':'rotate(180deg)'">
+        Outils <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform 0.2s"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <div class="dash-tools-grid" style="display:none;">
+        ${toolsBtns}
+        <button class="share-btn" onclick="exportJSON()">Export</button>
+        <button class="share-btn" onclick="generateEPUB()">EPUB</button>
+        <button class="share-btn" onclick="importJSON()">Import</button>
       </div>
-    </div>` : '';
-  
-  // Desktop quick actions (compact row)
-  const desktopQuickHtml = !isMobile() ? `
+    </div>` : `
     <div style="display:flex;justify-content:center;gap:0.5rem;margin-top:1.25rem;flex-wrap:wrap;">
-      <button class="share-btn" onclick="showRandomArticle()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/><path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/></svg> Hasard</button>
-      <button class="share-btn" onclick="showPhilosopherIndex()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Philosophes</button>
-      <button class="share-btn" onclick="showGraph()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="2"/><circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M12 10V7M7 17l3 1M17 7l-3-1"/></svg> Graphe</button>
-      <button class="share-btn" onclick="showGlossary()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg> Glossaire</button>
-      <button class="share-btn" onclick="showStats()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg> Statistiques</button>
-      ${Object.keys(articleNotes).length > 0 ? '<button class="share-btn" onclick="showNotesSearch()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Notes</button>' : ''}
-      ${userEntries.length > 0 ? '<button class="share-btn" onclick="checkForUpdates()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> MàJ' + (pendingUpdatesCount > 0 ? ' <span class="update-badge">' + pendingUpdatesCount + '</span>' : '') + '</button>' : ''}
-    </div>` : '';
+      ${toolsBtns}
+    </div>
+    <div style="display:flex;justify-content:center;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap;">
+      <button class="share-btn" onclick="exportJSON()">Export JSON</button>
+      <button class="share-btn" onclick="generateEPUB()">EPUB</button>
+      <button class="share-btn" onclick="importJSON()">Importer</button>
+    </div>`;
   
-  // Import bar (collapsed if content exists)
+  // Import bar
   const importHtml = `
     <div style="margin-top:2rem;text-align:center;">
       ${hasContent ? `<button class="share-btn" id="showImportToggle" onclick="document.getElementById('massImportWrap').style.display='block';this.style.display='none';" style="margin-bottom:0.5rem;">
@@ -5904,26 +6098,7 @@ function showWelcome() {
         </div>
       </div>
     </div>`;
-  
-  // Secondary tools (compact)
-  const toolsHtml = isMobile() ? `
-    <div style="display:flex;justify-content:center;gap:0.35rem;margin-top:1.25rem;flex-wrap:wrap;">
-      <button class="share-btn" onclick="showPhilosopherIndex()">Philosophes</button>
-      <button class="share-btn" onclick="showGraph()">Graphe</button>
-      <button class="share-btn" onclick="showGlossary()">Glossaire</button>
-      <button class="share-btn" onclick="showStats()">Stats</button>
-      <button class="share-btn" onclick="showNotesSearch()">Notes</button>
-      <button class="share-btn" onclick="checkForUpdates()">MàJ${pendingUpdatesCount > 0 ? ' <span class="update-badge">' + pendingUpdatesCount + '</span>' : ''}</button>
-      <button class="share-btn" onclick="exportJSON()">Export</button>
-      <button class="share-btn" onclick="generateEPUB()">EPUB</button>
-      <button class="share-btn" onclick="importJSON()">Import</button>
-    </div>` : `
-    <div style="display:flex;justify-content:center;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap;">
-      <button class="share-btn" onclick="exportJSON()">Exporter JSON</button>
-      <button class="share-btn" onclick="generateEPUB()">EPUB</button>
-      <button class="share-btn" onclick="importJSON()">Importer</button>
-    </div>`;
-  
+
   document.getElementById('content').innerHTML = `
     <div class="welcome welcome-enter">
       <button onclick="openSettings()" title="Apparence" style="position:absolute;top:1rem;right:1rem;z-index:10;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:var(--paper-warm);color:var(--muted);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">
@@ -5933,8 +6108,8 @@ function showWelcome() {
       <h2>L\u2019amour de la <em>sagesse</em></h2>
       <p>Explorez les concepts de la philosophie occidentale, de l\u2019Antiquit\u00e9 \u00e0 la pens\u00e9e contemporaine.</p>
       ${statsLine}
-      ${mobileQuickHtml}
-      ${desktopQuickHtml}
+      ${continueHtml}
+      ${quickHtml}
       ${updateBannerHtml}
       ${aotdHtml}
       ${parcoursHtml}
@@ -8298,14 +8473,9 @@ async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, sta
   statusEl.textContent = 'Compression…';
   
   var blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/epub+zip' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'dictionnaire-philosophie.epub';
-  a.click();
-  URL.revokeObjectURL(url);
+  statusEl.textContent = '✓ EPUB généré (' + articleFiles.length + ' articles)';
+  downloadBlob(blob, 'dictionnaire-philosophie.epub', statusEl);
   
-  statusEl.textContent = '✓ EPUB téléchargé (' + articleFiles.length + ' articles)';
   btn.disabled = false;
   } catch(err) {
     statusEl.textContent = 'Erreur EPUB : ' + (err.message || err);
@@ -8328,14 +8498,9 @@ function exportAsHTML(articleFiles, statusEl, btn) {
   html += '</body></html>';
   
   var blob = new Blob([html], { type: 'text/html' });
-  var url = URL.createObjectURL(blob);
-  var a = document.createElement('a');
-  a.href = url;
-  a.download = 'dictionnaire-philosophie.html';
-  a.click();
-  URL.revokeObjectURL(url);
+  statusEl.textContent = '✓ HTML généré (EPUB indisponible hors ligne)';
+  downloadBlob(blob, 'dictionnaire-philosophie.html', statusEl);
   
-  statusEl.textContent = '✓ HTML téléchargé (EPUB indisponible hors ligne)';
   btn.disabled = false;
 }
 

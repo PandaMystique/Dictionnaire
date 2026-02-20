@@ -230,6 +230,13 @@ WIDGET_JAVA
 
 # Enregistrer le widget dans AndroidManifest
 MANIFEST="android/app/src/main/AndroidManifest.xml"
+
+# Add storage permissions for Filesystem plugin (EPUB export)
+if [ -f "$MANIFEST" ] && ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
+  sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <application|' "$MANIFEST"
+  log "  permissions stockage ✓"
+fi
+
 if [ -f "$MANIFEST" ] && ! grep -q "ArticleDuJourWidget" "$MANIFEST"; then
   sed -i 's|</application>|        <receiver android:name=".ArticleDuJourWidget" android:exported="true">\n            <intent-filter>\n                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n            </intent-filter>\n            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />\n        </receiver>\n    </application>|' "$MANIFEST"
   log "  widget article du jour ✓"
