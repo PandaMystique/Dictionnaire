@@ -3353,7 +3353,11 @@ const PhiloDB = {
       req.onupgradeneeded = (e) => {
         e.target.result.createObjectStore(this.STORE);
       };
-      req.onsuccess = (e) => { this.db = e.target.result; resolve(this.db); };
+      req.onsuccess = (e) => {
+        this.db = e.target.result;
+        this.db.onversionchange = () => { this.db.close(); this.db = null; };
+        resolve(this.db);
+      };
       req.onerror = () => resolve(null); // Fallback to localStorage
     });
   },
@@ -3734,7 +3738,7 @@ async function massImportFromWikibooks() {
     const pct = 5 + (95 * (i + 1) / toImport.length);
     const displayTitle = title.split('/').pop().replace(/\//g, ' & ');
     
-    setStatus(`${displayTitle} (${i + 1}/${toImport.length})`, pct);
+    setStatus(`${escapeHtml(displayTitle)} (${i + 1}/${toImport.length})`, pct);
     
     try {
       const data = await jsonp(
@@ -4282,7 +4286,7 @@ async function importFromWikibooks() {
   btn.disabled = false;
   
   if (!wikitext) {
-    const tried = pagesToTry.map(t => '\u00ab\u202f' + t + '\u202f\u00bb').join(', ');
+    const tried = pagesToTry.map(t => '\u00ab\u202f' + escapeHtml(t) + '\u202f\u00bb').join(', ');
     statusEl.className = 'import-status error';
     statusEl.innerHTML = '\u2717 Article introuvable. Pages test\u00e9es\u202f: ' + tried 
       + '. <a href="https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie" target="_blank" style="color:inherit;text-decoration:underline;">V\u00e9rifier sur Wikilivres</a>';
@@ -4907,7 +4911,8 @@ function importJSON() {
         showWelcome();
         alert(`Import r\u00e9ussi : ${added} articles ajout\u00e9s (${data.entries.length - added} d\u00e9j\u00e0 pr\u00e9sents).`);
       } catch (err) {
-        alert('Erreur de lecture du fichier : ' + err.message);
+        alert('Erreur de lecture du fichier. Vérifiez que le format est correct.');
+        console.error('[Import]', err);
       }
     };
     reader.readAsText(file);
@@ -5525,11 +5530,11 @@ function showArticle(id) {
   
   let navHtml = '<nav class="article-nav">';
   if (prev) {
-    navHtml += '<button class="article-nav-btn prev" onclick="navigateTo(\'' + prev.id + '\')"><div class="nav-label">\u2190 Précédent</div><div class="nav-title">' + escapeHtml(prev.term) + '</div></button>';
+    navHtml += '<button class="article-nav-btn prev" onclick="navigateTo(\'' + safeId(prev.id) + '\')"><div class="nav-label">\u2190 Précédent</div><div class="nav-title">' + escapeHtml(prev.term) + '</div></button>';
   }
   navHtml += '<div class="article-nav-center"><button class="article-nav-home" onclick="showWelcome()" title="Accueil"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></button></div>';
   if (next) {
-    navHtml += '<button class="article-nav-btn next" onclick="navigateTo(\'' + next.id + '\')"><div class="nav-label">Suivant \u2192</div><div class="nav-title">' + escapeHtml(next.term) + '</div></button>';
+    navHtml += '<button class="article-nav-btn next" onclick="navigateTo(\'' + safeId(next.id) + '\')"><div class="nav-label">Suivant \u2192</div><div class="nav-title">' + escapeHtml(next.term) + '</div></button>';
   }
   navHtml += '</nav>';
   if (isMobile()) {
@@ -6435,6 +6440,7 @@ function removeFromCollection(colName, articleId) {
 
 function createCollection(name) {
   name = name.trim();
+  name = name.trim().replace(/[<>"'&\\]/g, '');
   if (!name || collections[name]) return;
   collections[name] = [];
   saveCollections();
@@ -6452,9 +6458,9 @@ function buildCollectionPicker(articleId) {
   var html = '<div class="collection-pills">';
   Object.keys(collections).forEach(function(name) {
     var isIn = collections[name].indexOf(articleId) >= 0;
-    html += '<span class="collection-pill' + (isIn ? ' active' : '') + '" onclick="toggleArticleInCollection(\'' + escapeAttr(name) + '\',\'' + articleId + '\',this)">' + (isIn ? '\u2713 ' : '') + name + '</span>';
+    html += '<span class="collection-pill' + (isIn ? ' active' : '') + '" onclick="toggleArticleInCollection(\'' + escapeAttr(name) + '\',\'' + safeId(articleId) + '\',this)">' + (isIn ? '\u2713 ' : '') + escapeHtml(name) + '</span>';
   });
-  html += '<span class="collection-pill collection-add-btn" onclick="promptNewCollection(\'' + articleId + '\')">+ Nouvelle</span>';
+  html += '<span class="collection-pill collection-add-btn" onclick="promptNewCollection(\'' + safeId(articleId) + '\')">+ Nouvelle</span>';
   html += '</div>';
   return html;
 }
@@ -6603,12 +6609,12 @@ function populateTocPanel() {
   if (ci >= 0) {
     html += '<div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid var(--border-light);">';
     if (ci > 0) {
-      html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + allE[ci-1].id + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;margin-bottom:0.3rem;">' +
+      html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + safeId(allE[ci-1].id) + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;margin-bottom:0.3rem;">' +
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         escapeHtml(allE[ci-1].term) + '</a>';
     }
     if (ci < allE.length - 1) {
-      html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + allE[ci+1].id + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;justify-content:flex-end;">' +
+      html += '<a href="#" onclick="event.preventDefault();closeTocPanel();navigateTo(\'' + safeId(allE[ci+1].id) + '\')" style="font-size:0.75rem;color:var(--muted-light);display:flex;align-items:center;gap:0.3rem;justify-content:flex-end;">' +
         escapeHtml(allE[ci+1].term) +
         '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>';
     }
@@ -7263,7 +7269,7 @@ function buildParcoursBanner(id) {
   }).join('');
   var nextIdx = info.index + 1;
   var nextBtn = nextIdx < info.articles.length
-    ? '<span class="parcours-banner-next" onclick="navigateTo(\'' + info.articles[nextIdx].id + '\')">Suivant →</span>'
+    ? '<span class="parcours-banner-next" onclick="navigateTo(\'' + safeId(info.articles[nextIdx].id) + '\')">Suivant →</span>'
     : '<span class="parcours-banner-next" onclick="activeParcoursId=\'\';PhiloDB.set(\'philo-active-parcours\',\'\');showWelcome();">✓ Terminé</span>';
   return '<div class="parcours-banner">' +
     '<span>' + info.parcours.icon + ' ' + info.parcours.title + ' · ' + (info.index + 1) + '/' + info.articles.length + '</span>' +
@@ -7313,12 +7319,12 @@ function filterNotes(query) {
   }
   
   results.innerHTML = matches.map(function(m) {
-    var excerpt = m.note.length > 120 ? m.note.slice(0, 120) + '…' : m.note;
+    var excerpt = escapeHtml(m.note.length > 120 ? m.note.slice(0, 120) + '…' : m.note);
     if (q) {
       var re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi');
       excerpt = excerpt.replace(re, '<mark>$1</mark>');
     }
-    return '<div class="notes-result" onclick="this.closest(\'.stats-overlay\').remove();navigateTo(\'' + m.entry.id + '\')">' +
+    return '<div class="notes-result" onclick="this.closest(\'.stats-overlay\').remove();navigateTo(\'' + safeId(m.entry.id) + '\')">' +
       '<div class="notes-result-term">' + escapeHtml(m.entry.term) + '</div>' +
       '<div class="notes-result-excerpt">' + excerpt + '</div></div>';
   }).join('');
@@ -8253,6 +8259,7 @@ function doEpubExport(btn) {
 }
 
 async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, statusEl, btn) {
+  try {
   // We need to build a ZIP file manually or use JSZip
   // Try to load JSZip dynamically
   if (typeof JSZip === 'undefined') {
@@ -8300,6 +8307,10 @@ async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, sta
   
   statusEl.textContent = '✓ EPUB téléchargé (' + articleFiles.length + ' articles)';
   btn.disabled = false;
+  } catch(err) {
+    statusEl.textContent = 'Erreur EPUB : ' + (err.message || err);
+    btn.disabled = false;
+  }
 }
 
 function exportAsHTML(articleFiles, statusEl, btn) {
@@ -8584,7 +8595,7 @@ async function checkForUpdates() {
     outdated.map(function(o) {
       var dateStr = o.newTimestamp ? new Date(o.newTimestamp).toLocaleDateString('fr-FR') : '?';
       return '<div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.5rem;border-bottom:1px solid var(--border-light);">' +
-        '<input type="checkbox" checked data-update-id="' + o.entry.id + '" data-update-title="' + o.title + '" style="accent-color:var(--accent);">' +
+        '<input type="checkbox" checked data-update-id="' + escapeAttr(o.entry.id) + '" data-update-title="' + escapeAttr(o.title) + '" style="accent-color:var(--accent);">' +
         '<span style="flex:1;font-size:0.82rem;color:var(--ink);">' + escapeHtml(o.entry.term) + '</span>' +
         '<span style="font-family:var(--mono);font-size:0.45rem;color:var(--muted-light);">' + dateStr + '</span>' +
         (o.uncertain ? '<span style="font-family:var(--mono);font-size:0.4rem;color:var(--gold);">?</span>' : '') +
