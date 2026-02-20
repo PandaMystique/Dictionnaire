@@ -3043,7 +3043,7 @@ body.has-toolbar .focus-toggle { display: none !important; }
 @media (max-width: 768px) { #settingsWidthGroup { display: none; } }
 [data-theme="dark"] .settings-panel { box-shadow: 0 -8px 30px rgba(0,0,0,0.5); }
 </style>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fr.wikibooks.org; img-src 'self' data: blob:;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' data: blob:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fr.wikibooks.org; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://fr.wikibooks.org; img-src 'self' data: blob:;">
 </head>
 <body>
 
@@ -3377,9 +3377,25 @@ const PhiloDB = {
       if (!db) return;
       const tx = db.transaction(this.STORE, 'readwrite');
       tx.objectStore(this.STORE).put(value, key);
-    } catch(e) {}
+      tx.onerror = function(e) {
+        if (e.target.error && e.target.error.name === 'QuotaExceededError') {
+          console.warn('[PhiloDB] Quota exceeded for key:', key);
+        }
+      };
+    } catch(e) {
+      console.warn('[PhiloDB] IDB write error:', e.message);
+    }
     // Always also write to localStorage as secondary backup
-    try { localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value)); } catch(e) {}
+    try {
+      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+    } catch(e) {
+      if (e.name === 'QuotaExceededError') {
+        console.warn('[PhiloDB] localStorage quota exceeded for key:', key);
+        // Try to free space by removing least critical data
+        try { localStorage.removeItem('philo-scroll-pos'); } catch(x) {}
+        try { localStorage.removeItem('philo-reading-times'); } catch(x) {}
+      }
+    }
   }
 };
 
@@ -3582,7 +3598,7 @@ function buildFilterBar() {
   if (!bar) return;
   const cats = getCategories();
   bar.innerHTML = cats.map(c => 
-    `<button class="filter-chip ${activeCategoryFilter === c ? 'active' : ''}" onclick="toggleCategoryFilter('${c.replace(/'/g, "\\'")}')">${c}</button>`
+    `<button class="filter-chip ${activeCategoryFilter === c ? 'active' : ''}" onclick="toggleCategoryFilter('${escapeAttr(c)}')">${escapeHtml(c)}</button>`
   ).join('');
 }
 
@@ -3609,12 +3625,16 @@ function autoLinkContent(html, currentId) {
     if (linked.has(id)) continue;
     // Escape special regex characters in term
     const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Skip terms that would create problematic regex
+    if (escaped.length < 2) continue;
+    try {
     // Match whole word, case insensitive, but not inside HTML tags or already linked
     const regex = new RegExp(`(?<![<\\/\\w"=])\\b(${escaped})\\b(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
     if (regex.test(html)) {
       html = html.replace(regex, `<a class="auto-link" onclick="navigateTo('${safeId(id)}')">$1</a>`);
       linked.add(id);
     }
+    } catch(e) { /* skip term with bad regex */ }
   }
   
   return html;
@@ -3886,7 +3906,7 @@ function parseMediaWiki(wikitext) {
     }
   }
   
-  return { html: sanitizeHtml(html), refs: allRefs };
+  return { html: sanitizeHtml(html), refs: allRefs.map(function(r) { return sanitizeHtml(r); }) };
 }
 
 function convertWikiLinesToHtml(lines) {
@@ -4151,12 +4171,20 @@ Paragraphe de texte avec ''italique'' et '''gras'''.
   }, 50);
 }
 
-function escapeAttr(s) { return s.replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
 // ===== WIKIBOOKS IMPORT (JSONP — bypasses CORS/sandbox) =====
 function jsonp(url) {
   return new Promise((resolve, reject) => {
+    // Validate URL domain
+    try {
+      var parsed = new URL(url);
+      if (parsed.hostname !== 'fr.wikibooks.org') {
+        reject(new Error('Unauthorized domain: ' + parsed.hostname));
+        return;
+      }
+    } catch(e) { reject(new Error('Invalid URL')); return; }
     const cbName = '_wbcb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
     const timeout = setTimeout(() => {
       delete window[cbName];
@@ -4376,7 +4404,7 @@ function showEditorTab(tab, btn) {
       const parsed = parseMediaWiki(wikitext);
       preview.innerHTML = `<div class="article-body">${parsed.html}</div>`;
       if (parsed.refs.length > 0) {
-        preview.innerHTML += `<div class="article-refs" style="margin-top:1.5rem;"><h4>Références extraites (${parsed.refs.length})</h4>${parsed.refs.map(r => '<p>— ' + r + '</p>').join('')}</div>`;
+        preview.innerHTML += `<div class="article-refs" style="margin-top:1.5rem;"><h4>Références extraites (${parsed.refs.length})</h4>${parsed.refs.map(r => '<p>— ' + escapeHtml(r) + '</p>').join('')}</div>`;
       }
     } else {
       preview.innerHTML = '<p style="color:var(--muted-light);font-style:italic;">Rien à afficher. Écrivez du contenu dans l\'onglet Écriture.</p>';
@@ -4384,7 +4412,11 @@ function showEditorTab(tab, btn) {
   }
 }
 
+var savingEntry = false;
 function saveEntry() {
+  if (savingEntry) return;
+  savingEntry = true;
+  setTimeout(function() { savingEntry = false; }, 500);
   const title = document.getElementById('editorTitle').value.trim();
   const category = document.getElementById('editorCategory').value.trim() || 'Philosophie';
   const etymology = document.getElementById('editorEtymology').value.trim();
@@ -4462,8 +4494,8 @@ function trackRead(id) {
   PhiloDB.set('philo-read', JSON.stringify([...readArticles]));
   // Add to history
   readHistory = readHistory.filter(h => h.id !== id);
-  readHistory.unshift({ id, time: Date.now() });
-  if (readHistory.length > 50) readHistory.length = 50;
+  readHistory.unshift({ id: safeId(id), time: Date.now() });
+  if (readHistory.length > 100) readHistory = readHistory.slice(0, 100);
   PhiloDB.set('philo-history', JSON.stringify(readHistory));
 }
 
@@ -4749,8 +4781,8 @@ function showSearchSuggestions(query) {
     <div class="search-suggestion${i === suggestHighlight ? ' highlighted' : ''}" onmousedown="navigateTo('${safeId(e.id)}')" data-idx="${i}">
       <div class="search-suggestion-letter">${e.letter}</div>
       <div class="search-suggestion-text">
-        <div class="search-suggestion-title">${e.term}</div>
-        <div class="search-suggestion-cat">${e.category}</div>
+        <div class="search-suggestion-title">${escapeHtml(e.term)}</div>
+        <div class="search-suggestion-cat">${escapeHtml(e.category)}</div>
       </div>
     </div>`).join('');
   box.classList.add('visible');
@@ -4918,22 +4950,23 @@ function checkDuplicate(title) {
   if (!warn || !title.trim()) { if (warn) warn.innerHTML = ''; return; }
   const dup = findDuplicate(title.trim());
   if (dup && (!editingEntryId || dup.id !== editingEntryId)) {
-    warn.innerHTML = `<div class="duplicate-warning">\u26a0 Un article <strong>${dup.term}</strong> existe d\u00e9j\u00e0 dans la cat\u00e9gorie ${dup.category}. <a href="#" onclick="event.preventDefault();navigateTo('${safeId(dup.id)}')">Voir l\u2019article</a></div>`;
+    warn.innerHTML = `<div class="duplicate-warning">\u26a0 Un article <strong>${escapeHtml(dup.term)}</strong> existe d\u00e9j\u00e0 dans la cat\u00e9gorie ${escapeHtml(dup.category)}. <a href="#" onclick="event.preventDefault();navigateTo('${safeId(dup.id)}')">Voir l\u2019article</a></div>`;
   } else {
     warn.innerHTML = '';
   }
 }
 
 // ===== IDB RESTORATION (runs after sync init) =====
+var idbRestoreComplete = false;
 async function restoreFromIDB() {
   try {
     const idbEntries = await PhiloDB.get('philo-user-entries');
     if (idbEntries) {
-      const parsed = JSON.parse(idbEntries);
+      const parsed = safeParse(idbEntries, []);
       // Use IDB data if it has more entries than localStorage (localStorage was wiped)
       if (Array.isArray(parsed) && parsed.length > userEntries.length) {
-        userEntries = parsed;
-        try { localStorage.setItem('philo-user-entries', idbEntries); } catch(e) {}
+        userEntries = parsed.map(function(e) { return validateEntry(e); }).filter(Boolean);
+        try { localStorage.setItem('philo-user-entries', JSON.stringify(userEntries)); } catch(e) {}
         updateEntryCount();
         buildAlphaNav();
         buildFilterBar();
@@ -4946,7 +4979,7 @@ async function restoreFromIDB() {
     // Restore bookmarks
     const idbBookmarks = await PhiloDB.get('philo-bookmarks');
     if (idbBookmarks) {
-      const parsed = JSON.parse(idbBookmarks);
+      const parsed = safeParse(idbBookmarks, []);
       if (Array.isArray(parsed) && parsed.length > bookmarks.length) {
         bookmarks = parsed;
         try { localStorage.setItem('philo-bookmarks', idbBookmarks); } catch(e) {}
@@ -4956,7 +4989,7 @@ async function restoreFromIDB() {
     // Restore read state
     const idbRead = await PhiloDB.get('philo-read');
     if (idbRead) {
-      const parsed = JSON.parse(idbRead);
+      const parsed = safeParse(idbRead, []);
       if (Array.isArray(parsed) && parsed.length > readArticles.size) {
         readArticles = new Set(parsed);
         try { localStorage.setItem('philo-read', idbRead); } catch(e) {}
@@ -4966,7 +4999,7 @@ async function restoreFromIDB() {
     // Restore history
     const idbHistory = await PhiloDB.get('philo-history');
     if (idbHistory) {
-      const parsed = JSON.parse(idbHistory);
+      const parsed = safeParse(idbHistory, []);
       if (Array.isArray(parsed) && parsed.length > readHistory.length) {
         readHistory = parsed;
         try { localStorage.setItem('philo-history', idbHistory); } catch(e) {}
@@ -4994,7 +5027,7 @@ async function restoreFromIDB() {
     const idbNotes = await PhiloDB.get('philo-notes');
     if (idbNotes) {
       try {
-        var parsed = JSON.parse(idbNotes);
+        var parsed = safeParse(idbNotes, {});
         if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > Object.keys(articleNotes).length) {
           articleNotes = parsed;
           try { localStorage.setItem('philo-notes', idbNotes); } catch(e) {}
@@ -5006,7 +5039,7 @@ async function restoreFromIDB() {
     const idbCollections = await PhiloDB.get('philo-collections');
     if (idbCollections) {
       try {
-        var parsed = JSON.parse(idbCollections);
+        var parsed = safeParse(idbCollections, {});
         if (parsed && typeof parsed === 'object') {
           collections = parsed;
           try { localStorage.setItem('philo-collections', idbCollections); } catch(e) {}
@@ -5018,7 +5051,7 @@ async function restoreFromIDB() {
     const idbTimes = await PhiloDB.get('philo-reading-times');
     if (idbTimes) {
       try {
-        var parsed = JSON.parse(idbTimes);
+        var parsed = safeParse(idbTimes, {});
         if (parsed && typeof parsed === 'object') {
           readingStartTimes = parsed;
           try { localStorage.setItem('philo-reading-times', idbTimes); } catch(e) {}
@@ -5044,15 +5077,15 @@ async function restoreFromIDB() {
     var idbLet = await PhiloDB.get('philo-lettrine');
     if (idbLet) { appLettrine = idbLet === 'true'; try { localStorage.setItem('philo-lettrine', idbLet); } catch(e) {} }
     var idbHL = await PhiloDB.get('philo-highlights');
-    if (idbHL) { try { articleHighlights = JSON.parse(idbHL); try { localStorage.setItem('philo-highlights', idbHL); } catch(e) {} } catch(e) {} }
+    if (idbHL) { try { articleHighlights = safeParse(idbHL, {}); try { localStorage.setItem('philo-highlights', idbHL); } catch(e) {} } catch(e) {} }
     var idbHLMode = await PhiloDB.get('philo-highlight-mode');
     if (idbHLMode) { highlightMode = idbHLMode === 'true'; try { localStorage.setItem('philo-highlight-mode', idbHLMode); } catch(e) {} if (highlightMode) document.body.classList.add('highlight-mode'); }
     var idbSP = await PhiloDB.get('philo-scroll-pos');
-    if (idbSP) { try { articleScrollPos = JSON.parse(idbSP); try { localStorage.setItem('philo-scroll-pos', idbSP); } catch(e) {} } catch(e) {} }
+    if (idbSP) { try { articleScrollPos = safeParse(idbSP, {}); try { localStorage.setItem('philo-scroll-pos', idbSP); } catch(e) {} } catch(e) {} }
     var idbCT = await PhiloDB.get('philo-custom-tags');
-    if (idbCT) { try { customArticleTags = JSON.parse(idbCT); try { localStorage.setItem('philo-custom-tags', idbCT); } catch(e) {} } catch(e) {} }
+    if (idbCT) { try { customArticleTags = safeParse(idbCT, {}); try { localStorage.setItem('philo-custom-tags', idbCT); } catch(e) {} } catch(e) {} }
     var idbCTN = await PhiloDB.get('philo-all-custom-tags');
-    if (idbCTN) { try { allCustomTagNames = JSON.parse(idbCTN); try { localStorage.setItem('philo-all-custom-tags', idbCTN); } catch(e) {} } catch(e) {} }
+    if (idbCTN) { try { allCustomTagNames = safeParse(idbCTN, []); try { localStorage.setItem('philo-all-custom-tags', idbCTN); } catch(e) {} } catch(e) {} }
     applyAppearance();
   } catch (e) {
     console.log('[PhiloDB] IDB restore skipped:', e.message);
@@ -5112,7 +5145,7 @@ function init() {
   // Desktop search with suggestions
   const searchEl = document.getElementById('searchInput');
   searchEl.addEventListener('input', (e) => {
-    searchQuery = e.target.value.trim();
+    searchQuery = e.target.value.trim().slice(0, 200);
     activeLetterFilter = null;
     updateAlphaNav();
     renderEntryList();
@@ -5382,8 +5415,8 @@ function renderEntryList() {
       const isUser = entry._userEntry;
       const isRead = readArticles.has(entry.id);
       html += `<li class="entry-item ${isActive ? 'active' : ''}" onclick="navigateTo('${safeId(entry.id)}')">
-        <span class="entry-letter">${isBookmarked ? '\u2605' : isUser ? '\u270e' : entry.letter}</span>
-        <div><span class="entry-name">${entry.term}</span><span class="entry-category">${entry.category}</span></div>
+        <span class="entry-letter">${isBookmarked ? '\u2605' : isUser ? '\u270e' : escapeHtml(entry.letter || '')}</span>
+        <div><span class="entry-name">${escapeHtml(entry.term)}</span><span class="entry-category">${escapeHtml(entry.category)}</span></div>
         ${!isRead ? '<div class="read-dot" title="Non lu"></div>' : ''}</li>`;
     });
     html += `</ul></div>`;
@@ -5412,6 +5445,8 @@ function getFilteredEntries() {
 // ===== ARTICLE DISPLAY =====
 // ===== NAVIGATION HISTORY =====
 function navigateTo(id) {
+  if (!id || typeof id !== 'string') return;
+  if (ttsActive) stopTTS();
   saveScrollPos();
   if (currentArticle && currentArticle.id !== id) {
     navHistory.push(currentArticle.id);
@@ -5439,7 +5474,15 @@ function showArticle(id) {
   closeTocPanel();
   closeSettings();
   const content = document.getElementById('content');
+  if (!content) return;
   const isBookmarked = bookmarks.includes(entry.id);
+  
+  // Defensive: ensure critical fields exist
+  if (!entry.content) entry.content = '';
+  if (!entry.definition) entry.definition = '';
+  if (!entry.category) entry.category = 'Philosophie';
+  if (!entry.tags) entry.tags = [];
+  if (!entry.refs) entry.refs = [];
   
   // Auto-link terms in article body
   let linkedContent = autoLinkContent(entry.content, entry.id);
@@ -5466,11 +5509,11 @@ function showArticle(id) {
     const relatedEntries = relatedIds.map(rid => allEntries.find(e => e.id === rid)).filter(Boolean);
     if (relatedEntries.length > 0) {
       relatedHtml = `<div class="article-tags">${relatedEntries.map(r => 
-        `<span class="article-tag" onclick="navigateTo('${safeId(r.id)}')">${r.term}</span>`).join('')}</div>`;
+        `<span class="article-tag" onclick="navigateTo('${safeId(r.id)}')">${escapeHtml(r.term)}</span>`).join('')}</div>`;
     }
   }
   
-  let tagsHtml = entry.tags.map(t => `<span class="article-tag" onclick="searchTag('${t}')">${t}</span>`).join('');
+  let tagsHtml = entry.tags.map(t => `<span class="article-tag" onclick="searchTag('${escapeAttr(t)}')">${escapeHtml(t)}</span>`).join('');
   let customTagsHtml = buildCustomTagsHtml(id);
   
   const wikiUrl = `https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie/${encodeURIComponent(entry.term.replace(/ & /g, '/').replace(/ \(logique\)/, '_(logique)'))}`;
@@ -5499,7 +5542,7 @@ function showArticle(id) {
   var breadcrumbHtml = '<div class="article-breadcrumb">'
     + '<a onclick="showWelcome()">Accueil</a>'
     + '<span class="bc-sep">\u203a</span>'
-    + '<a onclick="searchTag(\'' + entry.category.replace(/'/g, "\\'") + '\')">' + entry.category + '</a>'
+    + '<a onclick="searchTag(\'' + escapeAttr(entry.category) + '\')">' + escapeHtml(entry.category) + '</a>'
     + '<span class="bc-sep">\u203a</span>'
     + '<span class="bc-current">' + escapeHtml(entry.term) + '</span>'
     + '</div>';
@@ -5511,11 +5554,11 @@ function showArticle(id) {
   const userBadge = entry._userEntry ? '<span class="user-entry-badge">Article personnalisé</span>' : '';
   const userActions = entry._userEntry ? `
     <div class="article-edit-actions">
-      <button class="btn" onclick="openEditor('${entry.id}')">
+      <button class="btn" onclick="openEditor('${safeId(entry.id)}')">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Modifier
       </button>
-      <button class="btn btn-danger" onclick="deleteUserEntry('${entry.id}')">
+      <button class="btn btn-danger" onclick="deleteUserEntry('${safeId(entry.id)}')">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-1px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
         Supprimer
       </button>
@@ -5569,12 +5612,12 @@ function showArticle(id) {
     breadcrumbHtml + '\n' +
     parcoursBannerHtml + '\n' +
     '      <header class="article-header" style="position:relative;">\n' +
-    (entry._userEntry ? '        <button class="article-edit-top" onclick="openEditor(\'' + entry.id + '\')" title="Modifier"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '') + '\n' +
-    '        <div class="article-category">' + (isMobile() ? '<span class="mobile-article-category-pill">' + entry.category + '</span>' : entry.category) + userBadge + '</div>\n' +
+    (entry._userEntry ? '        <button class="article-edit-top" onclick="openEditor(\'' + safeId(entry.id) + '\')" title="Modifier"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '') + '\n' +
+    '        <div class="article-category">' + (isMobile() ? '<span class="mobile-article-category-pill">' + escapeHtml(entry.category) + '</span>' : escapeHtml(entry.category)) + userBadge + '</div>\n' +
     '        <h2 class="article-title">' + escapeHtml(entry.term) + '</h2>\n' +
     readTimeHtml + '\n' +
-    (entry.etymology ? '        <div class="article-etymology">' + entry.etymology + '</div>' : '') + '\n' +
-    '        <div class="article-definition">' + entry.definition + '</div>\n' +
+    (entry.etymology ? '        <div class="article-etymology">' + escapeHtml(entry.etymology) + '</div>' : '') + '\n' +
+    '        <div class="article-definition">' + escapeHtml(entry.definition) + '</div>\n' +
     toolbarHtml + '\n' +
     '      </header>\n' +
     ficheHtml + '\n' +
@@ -5967,7 +6010,7 @@ function openDrawer(tab) {
     const cats = getCategories();
     const filterHtml = `<div class="drawer-filter-strip" id="drawerFilterStrip">
       <button class="drawer-filter-chip active" data-cat="" onclick="drawerFilterCategory('', this)">Tout</button>
-      ${cats.map(c => `<button class="drawer-filter-chip" data-cat="${c}" onclick="drawerFilterCategory('${c.replace(/'/g, "\\'")}', this)">${c}</button>`).join('')}
+      ${cats.map(c => `<button class="drawer-filter-chip" data-cat="${escapeAttr(c)}" onclick="drawerFilterCategory('${escapeAttr(c)}', this)">${c}</button>`).join('')}
     </div>`;
     
     alphaStrip.style.display = 'none';
@@ -6102,7 +6145,7 @@ function renderDrawerEntries(entries) {
           <div class="drawer-entry-letter">${isUser ? '\u270e' : entry.letter}</div>
           <div class="drawer-entry-text">
             <div class="drawer-entry-name">${escapeHtml(entry.term)}</div>
-            <div class="drawer-entry-cat">${entry.category}</div>
+            <div class="drawer-entry-cat">${escapeHtml(entry.category)}</div>
           </div>
           ${isBookmarked ? '<div class="drawer-entry-bookmark">\u2605</div>' : ''}
           <div class="drawer-entry-arrow">\u203a</div>
@@ -7332,9 +7375,9 @@ function closeOnboarding() {
 function sanitizeHtml(html) {
   // Remove <script> tags and their content
   html = html.replace(/<script[\s\S]*?<\/script>/gi, '');
-  // Remove event handlers (onerror, onload, onclick, onmouseover, etc.) 
-  // but keep our own onclick="navigateTo..." and onclick="searchTag..."
-  html = html.replace(/\s+on(error|load|mouseover|mouseout|mouseenter|mouseleave|focus|blur|change|submit|reset|abort)\s*=\s*["'][^"']*["']/gi, '');
+  // Remove ALL on* event handlers from imported content
+  html = html.replace(/\s+on\w+\s*=\s*["'][^"']*["']/gi, '');
+  html = html.replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');
   // Remove javascript: URIs
   html = html.replace(/href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'href="#"');
   // Remove data: URIs in src (except images)
@@ -7358,12 +7401,13 @@ function safeParse(str, fallback) {
 function validateEntry(e) {
   // Validate entry structure from import
   if (!e || typeof e !== 'object' || Array.isArray(e)) return null;
-  // Block prototype pollution
-  if ('__proto__' in e || 'constructor' in e || 'prototype' in e) return null;
+  // Block prototype pollution keys
+  var dangerousKeys = ['__proto__', 'constructor', 'prototype', '__defineGetter__', '__defineSetter__'];
+  for (var dk of dangerousKeys) { if (dk in e) delete e[dk]; }
   // Required fields
   if (typeof e.id !== 'string' || typeof e.term !== 'string') return null;
-  // Sanitize content fields
-  if (e.content) e.content = sanitizeHtml(String(e.content));
+  // Sanitize content fields (limit to 500KB each)
+  if (e.content) e.content = sanitizeHtml(String(e.content).slice(0, 500000));
   if (e.definition) e.definition = sanitizeHtml(String(e.definition));
   // Ensure safe types
   e.id = safeId(e.id);
@@ -7449,18 +7493,21 @@ function buildGlossary() {
   var allEntries = getAllEntries();
   var termCounts = {};
   
-  // Count term occurrences across all articles
+  // Build combined text once (performance: avoid re-scanning per term)
+  var combinedTexts = allEntries.map(function(e) {
+    return ((e.content || '').replace(/<[^>]+>/g, '') + ' ' + (e.definition || '')).toLowerCase();
+  });
+  var fullText = combinedTexts.join(' ');
+  
+  // Count term occurrences
   Object.keys(PHILO_GLOSSARY).forEach(function(term) {
-    var count = 0;
-    var re = new RegExp('\\b' + term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    allEntries.forEach(function(e) {
-      var text = (e.content || '').replace(/<[^>]+>/g, '') + ' ' + (e.definition || '');
-      var matches = text.match(re);
-      if (matches) count += matches.length;
-    });
-    if (count >= 2) {
-      termCounts[term] = count;
-    }
+    var escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try {
+      var re = new RegExp('\\b' + escaped + '\\b', 'gi');
+      var matches = fullText.match(re);
+      var count = matches ? matches.length : 0;
+      if (count >= 2) termCounts[term] = count;
+    } catch(e) { /* skip invalid regex */ }
   });
   
   // Sort by frequency
@@ -7493,9 +7540,9 @@ function showGlossary() {
     html += '<div class="glossary-letter">' + letter + '</div>';
     grouped[letter].forEach(function(t) {
       html += '<div class="glossary-item">' +
-        '<div class="glossary-term">' + t.term +
+        '<div class="glossary-term">' + escapeHtml(t.term) +
         '<span class="glossary-count">' + t.count + '×</span></div>' +
-        '<div class="glossary-def">' + t.def + '</div></div>';
+        '<div class="glossary-def">' + escapeHtml(t.def) + '</div></div>';
     });
   });
   
@@ -7534,6 +7581,7 @@ var ttsRate = 1.0;
 var ttsActive = false;
 
 function getTTSVoice() {
+  if (!('speechSynthesis' in window)) return null;
   var voices = speechSynthesis.getVoices();
   // Prefer French voices
   var fr = voices.filter(function(v) { return v.lang && v.lang.startsWith('fr'); });
@@ -7783,7 +7831,7 @@ function buildMiniGraph(entry) {
   // Outer nodes
   nodePositions.forEach(function(np) {
     var termShort = np.entry.term.length > 16 ? np.entry.term.slice(0, 14) + '\u2026' : np.entry.term;
-    svg += '<g class="mini-graph-node" onclick="navigateTo(\'' + np.entry.id + '\')">' +
+    svg += '<g class="mini-graph-node" onclick="navigateTo(\'' + safeId(np.entry.id) + '\')">' +
       '<circle cx="' + np.x + '" cy="' + np.y + '" r="5" fill="var(--border)" stroke="var(--muted-light)" stroke-width="1"/>' +
       '<text class="mini-graph-label" x="' + np.x + '" y="' + (np.y < cy ? np.y - 10 : np.y + 16) + 
       '" text-anchor="middle">' + escapeHtml(termShort) + '</text></g>';
@@ -7983,7 +8031,7 @@ function saveCustomTags() {
 }
 
 function addCustomTag(id, tagName) {
-  tagName = tagName.trim().toLowerCase();
+  tagName = tagName.trim().toLowerCase().replace(/[<>"'&\\]/g, '');
   if (!tagName || tagName.length > 30) return;
   if (!customArticleTags[id]) customArticleTags[id] = [];
   if (customArticleTags[id].indexOf(tagName) >= 0) return;
@@ -8006,7 +8054,7 @@ function promptAddCustomTag(id) {
   var existingHtml = allCustomTagNames.length > 0
     ? '<div style="display:flex;flex-wrap:wrap;gap:0.25rem;margin-bottom:0.5rem;">' +
       allCustomTagNames.slice(0, 15).map(function(t) {
-        return '<span class="custom-tag" onclick="addCustomTag(\'' + id + '\',\'' + t.replace(/'/g, "\\'") + '\')">' + t + '</span>';
+        return '<span class="custom-tag" onclick="addCustomTag(\'' + safeId(id) + '\',\'' + escapeAttr(t) + '\')">' + escapeHtml(t) + '</span>';
       }).join('') + '</div>'
     : '';
   
@@ -8018,10 +8066,10 @@ function buildCustomTagsHtml(id) {
   var tags = getCustomTags(id);
   var html = '<div class="custom-tags-wrap">';
   tags.forEach(function(tag) {
-    html += '<span class="custom-tag">' + tag +
-      ' <span class="custom-tag-remove" onclick="event.stopPropagation();removeCustomTag(\'' + id + '\',\'' + tag.replace(/'/g, "\\'") + '\')">&times;</span></span>';
+    html += '<span class="custom-tag">' + escapeHtml(tag) +
+      ' <span class="custom-tag-remove" onclick="event.stopPropagation();removeCustomTag(\'' + safeId(id) + '\',\'' + escapeAttr(tag) + '\')">&times;</span></span>';
   });
-  html += '<button class="custom-tag-add" onclick="promptAddCustomTag(\'' + id + '\')" title="Ajouter une étiquette">+</button>';
+  html += '<button class="custom-tag-add" onclick="promptAddCustomTag(\'' + safeId(id) + '\')" title="Ajouter une étiquette">+</button>';
   html += '</div>';
   return html;
 }
@@ -8080,7 +8128,10 @@ function doEpubExport(btn) {
   entries.sort(function(a, b) { return a.term.localeCompare(b.term, 'fr'); });
   
   // Build EPUB structure
-  var uuid = 'urn:uuid:' + crypto.randomUUID();
+  var uuid = 'urn:uuid:' + (crypto.randomUUID ? crypto.randomUUID() : 
+    ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+      return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16);
+    }));
   var now = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
   
   // Container XML
@@ -8126,8 +8177,8 @@ function doEpubExport(btn) {
   // Build article pages
   var articleFiles = [];
   entries.forEach(function(e, i) {
-    var safeId = e.id.replace(/[^a-zA-Z0-9-]/g,'');
-    var fname = 'art_' + safeId + '.xhtml';
+    var epubSafeId = e.id.replace(/[^a-zA-Z0-9-]/g,'');
+    var fname = 'art_' + epubSafeId + '.xhtml';
     
     // Clean HTML for XHTML compliance
     var body = (e.content || e.definition || '').replace(/<br>/g, '<br/>').replace(/<hr>/g, '<hr/>');
@@ -8142,7 +8193,7 @@ function doEpubExport(btn) {
     var refsHtml = '';
     if (e.refs && e.refs.length > 0) {
       refsHtml = '<div class="refs"><h3>Références</h3><ul>' +
-        e.refs.map(function(r) { return '<li>' + r + '</li>'; }).join('') +
+        e.refs.map(function(r) { return '<li>' + escapeHtml(r) + '</li>'; }).join('') +
         '</ul></div>';
     }
     
@@ -8155,7 +8206,7 @@ function doEpubExport(btn) {
       body + '\n' + refsHtml +
       '</body></html>';
     
-    articleFiles.push({ name: fname, content: html, id: safeId, term: e.term });
+    articleFiles.push({ name: fname, content: html, id: epubSafeId, term: e.term });
   });
   
   // OPF manifest
@@ -8193,13 +8244,12 @@ function doEpubExport(btn) {
   nav += '</ol>\n</nav>\n</body></html>';
   
   // Build ZIP (minimal EPUB = ZIP with specific structure)
-  // Use JSZip-like manual construction
-  try {
-    buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, statusEl, btn);
-  } catch(err) {
-    statusEl.textContent = 'Erreur : ' + err.message;
-    btn.disabled = false;
-  }
+  // buildEpubZip is async — use .catch to surface errors
+  buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, statusEl, btn)
+    .catch(function(err) {
+      statusEl.textContent = 'Erreur : ' + (err.message || err);
+      btn.disabled = false;
+    });
 }
 
 async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, statusEl, btn) {
@@ -8211,7 +8261,6 @@ async function buildEpubZip(container, opf, css, tocHtml, nav, articleFiles, sta
       await new Promise(function(resolve, reject) {
         var s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-        s.integrity = 'sha512-XMVd28F1oH/O71fzwBnV7HucLxVwtxf26XV8P4wPk26EDxuGZ91N8bsOttmnomcCD3CS5ZMRL50H0GgOHvegtg==';
         s.crossOrigin = 'anonymous';
         s.onload = resolve;
         s.onerror = reject;
@@ -8262,7 +8311,7 @@ function exportAsHTML(articleFiles, statusEl, btn) {
     'blockquote{border-left:3px solid #d4a843;padding:0.5em 1em;background:#faf6f0;}</style></head><body>';
   html += '<h1>Dictionnaire de Philosophie</h1>';
   articleFiles.forEach(function(f) {
-    html += '<h2 id="' + f.id + '">' + f.term + '</h2>';
+    html += '<h2 id="' + escapeAttr(f.id) + '">' + escapeHtml(f.term) + '</h2>';
     html += f.content.replace(/<\?xml[^?]*\?>/, '').replace(/<(!DOCTYPE|html|head|title|link|body|\/?html|\/?head|\/?body)[^>]*>/gi, '');
   });
   html += '</body></html>';
