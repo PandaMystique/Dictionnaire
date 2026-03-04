@@ -298,8 +298,6 @@ function setParaSpacing(val) {
 }
 
 // ===== LETTRINE =====
-var highlightMode = lsGet('philo-highlight-mode', 'false') === 'true';
-
 function applyLettrine() {
   // Lettrine is now injected via HTML in showArticle, so re-render if needed
   if (currentArticle) showArticle(currentArticle.id);
