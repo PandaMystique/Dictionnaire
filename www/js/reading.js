@@ -1,33 +1,23 @@
 // ===== READ TRACKING =====
 function trackRead(id) {
-  readArticles.add(id);
-  PhiloDB.set('philo-read', JSON.stringify([...readArticles]));
-  // Add to history
-  readHistory = readHistory.filter(h => h.id !== id);
-  readHistory.unshift({ id, time: Date.now() });
-  if (readHistory.length > 50) readHistory.length = 50;
-  PhiloDB.set('philo-history', JSON.stringify(readHistory));
+  Data.trackRead(id);
 }
 
 function getReadStats() {
-  const all = getAllEntries();
-  return { total: all.length, read: all.filter(e => readArticles.has(e.id)).length };
+  return Data.getReadStats();
 }
 
 // ===== FONT SIZE =====
 function adjustFontSize(delta) {
-  currentFontSize = Math.max(75, Math.min(150, currentFontSize + delta * 5));
-  PhiloDB.set('philo-fontsize', currentFontSize);
+  var newSize = Math.max(75, Math.min(150, Data.pref('fontSize') + delta * 5));
+  Data.setPref('fontSize', newSize);
   applyFontSize();
-  // Sync settings slider if open
   var sl = document.getElementById('settingsFontSize');
-  if (sl) sl.value = currentFontSize;
+  if (sl) sl.value = newSize;
   var val = document.getElementById('settingsFontVal');
-  if (val) val.textContent = currentFontSize + '%';
+  if (val) val.textContent = newSize + '%';
 }
 
 function applyFontSize() {
-  // Delegate to applyAppearance which handles all text styling in one place
   applyAppearance();
 }
-

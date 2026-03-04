@@ -1,6 +1,6 @@
 // ===== THEME =====
 function initTheme() {
-  const saved = lsGet('philo-theme', 'light');
+  const saved = Data.getTheme();
   document.documentElement.setAttribute('data-theme', saved);
   updateThemeIcons(saved);
 }
@@ -15,7 +15,7 @@ function toggleTheme() {
 
 function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  PhiloDB.set('philo-theme', theme);
+  Data.saveTheme(theme);
   updateThemeIcons(theme);
   updateSettingsThemeButtons(theme);
 }
@@ -34,7 +34,5 @@ function updateThemeIcons(theme) {
   document.querySelectorAll('[id$="ThemeMoon"], [id$="IconMoon"]').forEach(function(el) {
     el.style.display = isDark ? 'block' : 'none';
   });
-  // Update settings theme buttons if open
   updateSettingsThemeButtons(theme);
 }
-

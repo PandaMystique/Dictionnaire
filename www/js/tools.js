@@ -34,7 +34,7 @@ function showSearchSuggestions(query) {
 function showPhilosopherIndex() {
   const allEntries = getAllEntries();
   const philosophers = new Map();
-  const knownPhilosophers = ['Aristote','Platon','Socrate','Descartes','Kant','Hegel','Nietzsche','Heidegger','Spinoza','Leibniz','Hume','Locke','Marx','Sartre','Husserl','Wittgenstein','Bergson','Kierkegaard','Schopenhauer','\u00c9picure','Thomas d\'Aquin','Augustin','Montaigne','Pascal','Rousseau','Hobbes','Levinas','Derrida','Foucault','Deleuze','Merleau-Ponty','Russell','Frege','Quine','Popper','Kuhn','Duns Scot','Ockham','Ab\u00e9lard','Averro\u00e8s','Avicenne','Plotin'];
+  // knownPhilosophers data is in data.js
   
   allEntries.forEach(e => {
     const text = e.content.replace(/<[^>]+>/g, '') + ' ' + e.tags.join(' ');
@@ -133,12 +133,12 @@ function importJSON() {
         // Merge bookmarks
         if (data.bookmarks) {
           data.bookmarks.forEach(b => { if (!bookmarks.includes(b)) bookmarks.push(b); });
-          PhiloDB.set('philo-bookmarks', JSON.stringify(bookmarks));
+          Data.saveBookmarks();
         }
         // Merge read data
         if (data.readArticles) {
           data.readArticles.forEach(id => readArticles.add(id));
-          PhiloDB.set('philo-read', JSON.stringify([...readArticles]));
+          Data.saveReadArticles();
         }
         saveUserEntries();
         updateEntryCount();
@@ -197,138 +197,5 @@ function checkDuplicate(title) {
   }
 }
 
-// ===== IDB RESTORATION (runs after sync init) =====
-async function restoreFromIDB() {
-  try {
-    const idbEntries = await PhiloDB.get('philo-user-entries');
-    if (idbEntries) {
-      const parsed = JSON.parse(idbEntries);
-      // Use IDB data if it has more entries than localStorage (localStorage was wiped)
-      if (Array.isArray(parsed) && parsed.length > userEntries.length) {
-        userEntries = parsed;
-        try { localStorage.setItem('philo-user-entries', idbEntries); } catch(e) {}
-        updateEntryCount();
-        buildAlphaNav();
-        buildFilterBar();
-        renderEntryList();
-        if (!currentArticle) showWelcome();
-        console.log('[PhiloDB] Restored', parsed.length, 'entries from IndexedDB');
-      }
-    }
-    
-    // Restore bookmarks
-    const idbBookmarks = await PhiloDB.get('philo-bookmarks');
-    if (idbBookmarks) {
-      const parsed = JSON.parse(idbBookmarks);
-      if (Array.isArray(parsed) && parsed.length > bookmarks.length) {
-        bookmarks = parsed;
-        try { localStorage.setItem('philo-bookmarks', idbBookmarks); } catch(e) {}
-      }
-    }
-    
-    // Restore read state
-    const idbRead = await PhiloDB.get('philo-read');
-    if (idbRead) {
-      const parsed = JSON.parse(idbRead);
-      if (Array.isArray(parsed) && parsed.length > readArticles.size) {
-        readArticles = new Set(parsed);
-        try { localStorage.setItem('philo-read', idbRead); } catch(e) {}
-      }
-    }
-    
-    // Restore history
-    const idbHistory = await PhiloDB.get('philo-history');
-    if (idbHistory) {
-      const parsed = JSON.parse(idbHistory);
-      if (Array.isArray(parsed) && parsed.length > readHistory.length) {
-        readHistory = parsed;
-        try { localStorage.setItem('philo-history', idbHistory); } catch(e) {}
-      }
-    }
-    
-    // Restore theme
-    const idbTheme = await PhiloDB.get('philo-theme');
-    if (idbTheme && !lsGet('philo-theme', '')) {
-      try { localStorage.setItem('philo-theme', idbTheme); } catch(e) {}
-      initTheme();
-    }
-    
-    // Restore font size
-    const idbFontSize = await PhiloDB.get('philo-fontsize');
-    if (idbFontSize) {
-      const size = parseInt(idbFontSize);
-      if (size && size !== 100) {
-        currentFontSize = size;
-        try { localStorage.setItem('philo-fontsize', idbFontSize); } catch(e) {}
-      }
-    }
-    
-    // Restore notes
-    const idbNotes = await PhiloDB.get('philo-notes');
-    if (idbNotes) {
-      try {
-        var parsed = JSON.parse(idbNotes);
-        if (parsed && typeof parsed === 'object' && Object.keys(parsed).length > Object.keys(articleNotes).length) {
-          articleNotes = parsed;
-          try { localStorage.setItem('philo-notes', idbNotes); } catch(e) {}
-        }
-      } catch(e) {}
-    }
-    
-    // Restore collections
-    const idbCollections = await PhiloDB.get('philo-collections');
-    if (idbCollections) {
-      try {
-        var parsed = JSON.parse(idbCollections);
-        if (parsed && typeof parsed === 'object') {
-          collections = parsed;
-          try { localStorage.setItem('philo-collections', idbCollections); } catch(e) {}
-        }
-      } catch(e) {}
-    }
-    
-    // Restore reading times
-    const idbTimes = await PhiloDB.get('philo-reading-times');
-    if (idbTimes) {
-      try {
-        var parsed = JSON.parse(idbTimes);
-        if (parsed && typeof parsed === 'object') {
-          readingStartTimes = parsed;
-          try { localStorage.setItem('philo-reading-times', idbTimes); } catch(e) {}
-        }
-      } catch(e) {}
-    }
-    
-    // Restore appearance settings
-    var idbLH = await PhiloDB.get('philo-line-height');
-    if (idbLH) { appLineHeight = parseInt(idbLH) || 190; try { localStorage.setItem('philo-line-height', idbLH); } catch(e) {} }
-    var idbTW = await PhiloDB.get('philo-text-width');
-    if (idbTW) { appTextWidth = parseInt(idbTW) || 680; try { localStorage.setItem('philo-text-width', idbTW); } catch(e) {} }
-    var idbBF = await PhiloDB.get('philo-body-font');
-    if (idbBF) { appBodyFont = idbBF; try { localStorage.setItem('philo-body-font', idbBF); } catch(e) {} }
-    var idbJ = await PhiloDB.get('philo-justify');
-    if (idbJ) { appJustify = idbJ === 'true'; try { localStorage.setItem('philo-justify', idbJ); } catch(e) {} }
-    var idbI = await PhiloDB.get('philo-indent');
-    if (idbI) { appIndent = idbI === 'true'; try { localStorage.setItem('philo-indent', idbI); } catch(e) {} }
-    var idbAc = await PhiloDB.get('philo-accent');
-    if (idbAc) { appAccent = idbAc; try { localStorage.setItem('philo-accent', idbAc); } catch(e) {} }
-    var idbPS = await PhiloDB.get('philo-para-spacing');
-    if (idbPS) { appParaSpacing = parseInt(idbPS) || 125; try { localStorage.setItem('philo-para-spacing', idbPS); } catch(e) {} }
-    var idbLet = await PhiloDB.get('philo-lettrine');
-    if (idbLet) { appLettrine = idbLet === 'true'; try { localStorage.setItem('philo-lettrine', idbLet); } catch(e) {} }
-    var idbHL = await PhiloDB.get('philo-highlights');
-    if (idbHL) { try { articleHighlights = JSON.parse(idbHL); try { localStorage.setItem('philo-highlights', idbHL); } catch(e) {} } catch(e) {} }
-    var idbHLMode = await PhiloDB.get('philo-highlight-mode');
-    if (idbHLMode) { highlightMode = idbHLMode === 'true'; try { localStorage.setItem('philo-highlight-mode', idbHLMode); } catch(e) {} if (highlightMode) document.body.classList.add('highlight-mode'); }
-    var idbSP = await PhiloDB.get('philo-scroll-pos');
-    if (idbSP) { try { articleScrollPos = JSON.parse(idbSP); try { localStorage.setItem('philo-scroll-pos', idbSP); } catch(e) {} } catch(e) {} }
-    var idbCT = await PhiloDB.get('philo-custom-tags');
-    if (idbCT) { try { customArticleTags = JSON.parse(idbCT); try { localStorage.setItem('philo-custom-tags', idbCT); } catch(e) {} } catch(e) {} }
-    var idbCTN = await PhiloDB.get('philo-all-custom-tags');
-    if (idbCTN) { try { allCustomTagNames = JSON.parse(idbCTN); try { localStorage.setItem('philo-all-custom-tags', idbCTN); } catch(e) {} } catch(e) {} }
-    applyAppearance();
-  } catch (e) {
-    console.log('[PhiloDB] IDB restore skipped:', e.message);
-  }
-}
+// restoreFromIDB is now in Data.restoreFromIDB() (data.js), called from init.js
 

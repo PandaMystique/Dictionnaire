@@ -19,23 +19,8 @@ function handleDoubleTap(e) {
 }
 
 // ===== PARCOURS GUIDÉS =====
-var parcoursDefinitions = [
-  { id: 'ethique', icon: '⚖️', title: 'Éthique & morale', desc: 'Les fondements de l\'action juste',
-    keywords: ['éthique','morale','vertu','devoir','bien','mal','justice','bonheur','liberté','conscience','responsabilité','volonté'] },
-  { id: 'connaissance', icon: '🔍', title: 'Théorie de la connaissance', desc: 'Savoir, croire, douter',
-    keywords: ['connaissance','vérité','raison','empirisme','rationalisme','scepticisme','logique','science','certitude','doute','perception','jugement'] },
-  { id: 'politique', icon: '🏛️', title: 'Philosophie politique', desc: 'Pouvoir, société, contrat',
-    keywords: ['politique','état','pouvoir','démocratie','liberté','droit','justice','loi','contrat','société','capitalisme','colonialisme','révolution'] },
-  { id: 'existence', icon: '💭', title: 'Existence & métaphysique', desc: 'L\'être, le temps, la mort',
-    keywords: ['existence','être','néant','mort','temps','conscience','âme','substance','identité','devenir','ontologie','phénoménologie','absurde'] },
-  { id: 'langage', icon: '📖', title: 'Langage & pensée', desc: 'Mots, signes, vérité',
-    keywords: ['langage','signe','sens','vérité','logique','dialectique','rhétorique','herméneutique','interprétation','concept','idée','définition'] },
-  { id: 'esthetique', icon: '🎭', title: 'Esthétique', desc: 'Le beau, l\'art, le sublime',
-    keywords: ['esthétique','art','beau','beauté','sublime','goût','création','imagination','sensible','contemplation'] }
-];
-
-var activeParcoursId = lsGet('philo-active-parcours', '');
-var parcoursProgress = JSON.parse(lsGet('philo-parcours-progress', '{}'));
+// parcoursDefinitions data is in data.js
+var activeParcoursId = Data.getActiveParcours();
 
 function getParcoursArticles(parcours) {
   var all = getAllEntries();
@@ -85,7 +70,7 @@ function startParcours(id) {
   var parcours = parcoursDefinitions.find(function(p) { return p.id === id; });
   if (!parcours) return;
   activeParcoursId = id;
-  PhiloDB.set('philo-active-parcours', id);
+  Data.saveActiveParcours(id);
   var articles = getParcoursArticles(parcours);
   if (articles.length === 0) return;
   // Find first unread in this parcours
@@ -112,7 +97,7 @@ function buildParcoursBanner(id) {
   if (prog.indexOf(id) < 0) {
     prog.push(id);
     parcoursProgress[info.parcours.id] = prog;
-    PhiloDB.set('philo-parcours-progress', JSON.stringify(parcoursProgress));
+    Data.saveParcoursProgress();
   }
   var dots = info.articles.map(function(a, i) {
     var cls = 'parcours-banner-dot';
@@ -123,7 +108,7 @@ function buildParcoursBanner(id) {
   var nextIdx = info.index + 1;
   var nextBtn = nextIdx < info.articles.length
     ? '<span class="parcours-banner-next" onclick="navigateTo(\'' + info.articles[nextIdx].id + '\')">Suivant →</span>'
-    : '<span class="parcours-banner-next" onclick="activeParcoursId=\'\';PhiloDB.set(\'philo-active-parcours\',\'\');showWelcome();">✓ Terminé</span>';
+    : '<span class="parcours-banner-next" onclick="activeParcoursId=\'\';Data.saveActiveParcours(\'\');showWelcome();">\u2713 Termin\u00e9</span>';
   return '<div class="parcours-banner">' +
     '<span>' + info.parcours.icon + ' ' + info.parcours.title + ' · ' + (info.index + 1) + '/' + info.articles.length + '</span>' +
     '<div class="parcours-banner-dots">' + dots + '</div>' +
@@ -185,7 +170,7 @@ function filterNotes(query) {
 
 // ===== ONBOARDING =====
 function showOnboarding() {
-  if (lsGet('philo-onboarded', '') === 'true') return;
+  if (Data.isOnboarded()) return;
   var overlay = document.createElement('div');
   overlay.className = 'onboarding-overlay';
   overlay.id = 'onboardingOverlay';
@@ -226,8 +211,7 @@ function nextOnboardingSlide(n) {
 function closeOnboarding() {
   var overlay = document.getElementById('onboardingOverlay');
   if (overlay) overlay.remove();
-  PhiloDB.set('philo-onboarded', 'true');
-  try { localStorage.setItem('philo-onboarded', 'true'); } catch(e) {}
+  Data.setOnboarded();
 }
 
 

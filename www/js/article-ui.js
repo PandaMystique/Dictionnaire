@@ -48,12 +48,8 @@ function showRandomArticle() {
 }
 
 // ===== FEATURE: NOTES =====
-function getNote(id) { return articleNotes[id] || ''; }
-function saveNote(id, text) {
-  if (text.trim()) articleNotes[id] = text.trim();
-  else delete articleNotes[id];
-  PhiloDB.set('philo-notes', JSON.stringify(articleNotes));
-}
+function getNote(id) { return Data.getNote(id); }
+function saveNote(id, text) { Data.saveNote(id, text); }
 
 // ===== FEATURE: FICHE EXPRESS =====
 function buildFicheExpress(entry) {
@@ -219,8 +215,7 @@ function showStats() {
 
 // ===== FEATURE: SORT =====
 function setSortMode(mode) {
-  sortMode = mode;
-  PhiloDB.set('philo-sort', mode);
+  Data.setPref('sortMode', mode);
   renderEntryList();
 }
 
@@ -260,7 +255,7 @@ function mobileJumpToLetter(letter) {
 
 // ===== FEATURE: COLLECTIONS =====
 function saveCollections() {
-  PhiloDB.set('philo-collections', JSON.stringify(collections));
+  Data.saveCollections();
 }
 
 function addToCollection(colName, articleId) {
@@ -336,7 +331,7 @@ function stopReadingTimer() {
     if (elapsed > 5 && elapsed < 3600) { // Between 5s and 1h
       var id = readingStartTimes._currentId;
       readingStartTimes[id] = (readingStartTimes[id] || 0) + elapsed;
-      PhiloDB.set('philo-reading-times', JSON.stringify(readingStartTimes));
+      Data.saveReadingTimes();
     }
   }
   readingStartTimes._current = null;

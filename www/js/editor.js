@@ -322,21 +322,9 @@ function cleanWikitext(text) {
 function guessCategory(wikitext, title) {
   const text = wikitext.toLowerCase();
   const t = title.toLowerCase();
-  
-  const patterns = [
-    [/\b(logique|syllogisme|proposition|prédicat)\b/, 'Logique'],
-    [/\b(métaphysique|substance|être|ontologi|existence)\b/, 'Métaphysique'],
-    [/\b(moral|éthique|vertu|devoir|bien|mal)\b/, 'Philosophie morale'],
-    [/\b(connaissance|épistémol|vérité|science|savoir)\b/, 'Épistémologie'],
-    [/\b(dieu|théo|divin|religion|athé|déis|panthé)\b/, 'Philosophie de la religion'],
-    [/\b(politi|état|justice|liberté|droit|citoyen)\b/, 'Philosophie politique'],
-    [/\b(art|beauté|esthéti|sublime|goût)\b/, 'Esthétique'],
-    [/\b(langage|sens|signifi|sémantique|phrase)\b/, 'Philosophie du langage'],
-    [/\b(esprit|conscience|perception|âme|psycho)\b/, 'Philosophie de l\'esprit'],
-    [/\b(histoire|hegel|marx|dialectique|progrès)\b/, 'Philosophie de l\'histoire'],
-  ];
-  
-  for (const [regex, cat] of patterns) {
+
+  // categoryPatterns data is in data.js
+  for (const [regex, cat] of categoryPatterns) {
     if (regex.test(text) || regex.test(t)) return cat;
   }
   return 'Philosophie';
@@ -352,7 +340,7 @@ function guessTags(wikitext) {
   }
   
   // Also look for common philosopher names mentioned
-  const knownPhilosophers = ['Aristote', 'Platon', 'Socrate', 'Descartes', 'Kant', 'Hegel', 'Nietzsche', 'Heidegger', 'Spinoza', 'Leibniz', 'Hume', 'Locke', 'Marx', 'Sartre', 'Husserl', 'Wittgenstein', 'Bergson', 'Kierkegaard', 'Schopenhauer', 'Épicure', 'Thomas d\'Aquin', 'Augustin', 'Montaigne', 'Pascal', 'Rousseau', 'Hobbes', 'Levinas', 'Derrida', 'Foucault', 'Deleuze', 'Merleau-Ponty', 'Russell', 'Frege', 'Quine', 'Popper', 'Kuhn'];
+  // knownPhilosophers data is in data.js
   
   const found = new Set(boldNames);
   for (const name of knownPhilosophers) {

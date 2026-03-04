@@ -494,7 +494,7 @@ function toggleBookmark() {
   const idx = bookmarks.indexOf(currentArticle.id);
   if (idx > -1) bookmarks.splice(idx, 1);
   else bookmarks.push(currentArticle.id);
-  PhiloDB.set('philo-bookmarks', JSON.stringify(bookmarks));
+  Data.saveBookmarks();
   
   if (isMobile()) { updateMobileBookmarkBtn(); }
   showArticle(currentArticle.id);
