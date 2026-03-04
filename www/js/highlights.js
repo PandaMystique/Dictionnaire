@@ -180,4 +180,4 @@ function updateProgressMap() {
 }
 
 // ===== DOUBLE-TAP ZOOM (MOBILE) =====
-var lastTapTime = 0;
+// lastTapTime is now in state.js

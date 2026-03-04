@@ -49,4 +49,6 @@ var appParaSpacing = parseInt(lsGet('philo-para-spacing', '125'));
 var appLettrine = lsGet('philo-lettrine', 'true') === 'true';
 var articleScrollPos = JSON.parse(lsGet('philo-scroll-pos', '{}'));
 var articleHighlights = JSON.parse(lsGet('philo-highlights', '{}'));
-
+var highlightMode = lsGet('philo-highlight-mode', 'false') === 'true';
+var lastTapTime = 0;
+var lastTapTarget = null;

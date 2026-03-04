@@ -233,3 +233,67 @@ function showGraph() {
   };
 }
 
+
+// ===== MINI CONNECTION GRAPH =====
+function buildMiniGraph(entry) {
+  var allEntries = getAllEntries();
+  var relatedIds = (entry.related || []).slice();
+  var autoRelated = detectRelated(entry);
+  autoRelated.forEach(function(rid) { if (relatedIds.indexOf(rid) < 0) relatedIds.push(rid); });
+  relatedIds = relatedIds.slice(0, 8);
+  
+  var nodes = relatedIds.map(function(rid) { return allEntries.find(function(e) { return e.id === rid; }); }).filter(Boolean);
+  if (nodes.length < 2) return '';
+  
+  var w = 460, h = 220;
+  var cx = w / 2, cy = h / 2;
+  var rx = w * 0.38, ry = h * 0.36;
+  
+  var svg = '<div class="mini-graph-wrap">' +
+    '<div class="mini-graph-title">Réseau de connexions</div>' +
+    '<svg class="mini-graph-svg" viewBox="0 0 ' + w + ' ' + h + '">';
+  
+  var nodePositions = [];
+  nodes.forEach(function(n, i) {
+    var angle = (2 * Math.PI * i / nodes.length) - Math.PI / 2;
+    nodePositions.push({
+      x: cx + rx * Math.cos(angle),
+      y: cy + ry * Math.sin(angle),
+      entry: n
+    });
+  });
+  
+  // Edges center → nodes
+  nodePositions.forEach(function(np) {
+    svg += '<line class="mini-graph-edge" x1="' + cx + '" y1="' + cy + '" x2="' + np.x + '" y2="' + np.y + '"/>';
+  });
+  
+  // Cross-edges between related nodes
+  for (var i = 0; i < nodes.length; i++) {
+    for (var j = i + 1; j < nodes.length; j++) {
+      var niContent = normalizeText((nodes[i].content || '') + ' ' + nodes[i].tags.join(' '));
+      var njTerm = normalizeText(nodes[j].term);
+      if (njTerm.length > 3 && niContent.indexOf(njTerm) >= 0) {
+        svg += '<line class="mini-graph-edge" x1="' + nodePositions[i].x + '" y1="' + nodePositions[i].y + 
+          '" x2="' + nodePositions[j].x + '" y2="' + nodePositions[j].y + '" style="opacity:0.15"/>';
+      }
+    }
+  }
+  
+  // Outer nodes
+  nodePositions.forEach(function(np) {
+    var termShort = np.entry.term.length > 16 ? np.entry.term.slice(0, 14) + '\u2026' : np.entry.term;
+    svg += '<g class="mini-graph-node" onclick="navigateTo(\'' + np.entry.id + '\')">' +
+      '<circle cx="' + np.x + '" cy="' + np.y + '" r="5" fill="var(--border)" stroke="var(--muted-light)" stroke-width="1"/>' +
+      '<text class="mini-graph-label" x="' + np.x + '" y="' + (np.y < cy ? np.y - 10 : np.y + 16) + 
+      '" text-anchor="middle">' + escapeHtml(termShort) + '</text></g>';
+  });
+  
+  // Center node
+  var centerShort = entry.term.length > 18 ? entry.term.slice(0, 16) + '\u2026' : entry.term;
+  svg += '<circle cx="' + cx + '" cy="' + cy + '" r="8" fill="var(--accent)" stroke="var(--paper)" stroke-width="2"/>' +
+    '<text class="mini-graph-label-center" x="' + cx + '" y="' + (cy - 14) + '" text-anchor="middle">' + escapeHtml(centerShort) + '</text>';
+  
+  svg += '</svg></div>';
+  return svg;
+}

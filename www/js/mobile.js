@@ -1,4 +1,4 @@
-var lastTapTarget = null;
+// lastTapTarget is now in state.js
 
 function handleDoubleTap(e) {
   if (!isMobile() || !currentArticle) return;
@@ -230,3 +230,87 @@ function closeOnboarding() {
   try { localStorage.setItem('philo-onboarded', 'true'); } catch(e) {}
 }
 
+
+
+// ===== ALPHA SLIDER (iPhone contacts style) =====
+function initAlphaSlider(strip) {
+  var tooltip = document.getElementById('alphaTooltip');
+  var isSliding = false;
+  var lastLetter = '';
+  
+  function getLetterAt(y) {
+    var links = strip.querySelectorAll('a[data-letter]');
+    for (var i = 0; i < links.length; i++) {
+      var rect = links[i].getBoundingClientRect();
+      if (y >= rect.top && y <= rect.bottom) return links[i].getAttribute('data-letter');
+    }
+    // If above/below, return nearest
+    if (links.length > 0) {
+      var first = links[0].getBoundingClientRect();
+      if (y < first.top) return links[0].getAttribute('data-letter');
+      var last = links[links.length - 1].getBoundingClientRect();
+      if (y > last.bottom) return links[links.length - 1].getAttribute('data-letter');
+    }
+    return null;
+  }
+  
+  function highlightLetter(letter) {
+    strip.querySelectorAll('a').forEach(function(a) { a.classList.remove('alpha-active'); });
+    var active = strip.querySelector('a[data-letter="' + letter + '"]');
+    if (active) active.classList.add('alpha-active');
+  }
+  
+  function showTooltip(letter, y) {
+    if (!tooltip) return;
+    tooltip.textContent = letter;
+    tooltip.style.top = y + 'px';
+    tooltip.classList.add('visible');
+  }
+  
+  function hideTooltip() {
+    if (tooltip) tooltip.classList.remove('visible');
+    strip.querySelectorAll('a').forEach(function(a) { a.classList.remove('alpha-active'); });
+  }
+  
+  function jumpTo(letter) {
+    if (letter && letter !== lastLetter) {
+      lastLetter = letter;
+      mobileJumpToLetter(letter);
+      highlightLetter(letter);
+    }
+  }
+  
+  strip.addEventListener('touchstart', function(e) {
+    e.preventDefault();
+    isSliding = true;
+    var touch = e.touches[0];
+    var letter = getLetterAt(touch.clientY);
+    if (letter) {
+      jumpTo(letter);
+      showTooltip(letter, touch.clientY);
+    }
+  }, { passive: false });
+  
+  strip.addEventListener('touchmove', function(e) {
+    if (!isSliding) return;
+    e.preventDefault();
+    var touch = e.touches[0];
+    var letter = getLetterAt(touch.clientY);
+    if (letter) {
+      jumpTo(letter);
+      showTooltip(letter, touch.clientY);
+    }
+  }, { passive: false });
+  
+  strip.addEventListener('touchend', function() {
+    isSliding = false;
+    lastLetter = '';
+    hideTooltip();
+  });
+  
+  // Click on individual letters
+  strip.addEventListener('click', function(e) {
+    var letter = e.target.getAttribute('data-letter');
+    if (letter) mobileJumpToLetter(letter);
+  });
+}
