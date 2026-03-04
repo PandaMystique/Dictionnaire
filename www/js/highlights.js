@@ -1,14 +1,12 @@
 // ===== HIGHLIGHT MODE =====
 function toggleHighlightMode(btn) {
-  highlightMode = !highlightMode;
-  if (btn) btn.classList.toggle('on', highlightMode);
-  document.body.classList.toggle('highlight-mode', highlightMode);
-  PhiloDB.set('philo-highlight-mode', highlightMode ? 'true' : 'false');
-  try { localStorage.setItem('philo-highlight-mode', highlightMode ? 'true' : 'false'); } catch(e) {}
+  Data.setPref('highlightMode', !Data.pref('highlightMode'));
+  if (btn) btn.classList.toggle('on', Data.pref('highlightMode'));
+  document.body.classList.toggle('highlight-mode', Data.pref('highlightMode'));
 }
 
 function handleHighlightSelection() {
-  if (!highlightMode || !currentArticle) return;
+  if (!Data.pref('highlightMode') || !currentArticle) return;
   var sel = window.getSelection();
   if (!sel || sel.isCollapsed || !sel.rangeCount) return;
   var range = sel.getRangeAt(0);
@@ -16,14 +14,12 @@ function handleHighlightSelection() {
   if (!body || !body.contains(range.commonAncestorContainer)) return;
   var text = sel.toString().trim();
   if (text.length < 3) return;
-  
-  // Wrap selection in highlight span
+
   var span = document.createElement('span');
   span.className = 'user-highlight';
   span.title = 'Cliquer pour supprimer le surlignage';
   span.onclick = function(e) {
     e.stopPropagation();
-    // Unwrap highlight
     var parent = this.parentNode;
     while (this.firstChild) parent.insertBefore(this.firstChild, this);
     parent.removeChild(this);
@@ -33,7 +29,7 @@ function handleHighlightSelection() {
     range.surroundContents(span);
     sel.removeAllRanges();
     saveHighlights();
-  } catch(e) { /* cross-element selections */ }
+  } catch(e) {}
 }
 
 function saveHighlights() {
@@ -44,16 +40,16 @@ function saveHighlights() {
   body.querySelectorAll('.user-highlight').forEach(function(hl) {
     highlights.push(hl.textContent);
   });
-  articleHighlights[currentArticle.id] = highlights;
-  PhiloDB.set('philo-highlights', JSON.stringify(articleHighlights));
+  Data.getHighlights()[currentArticle.id] = highlights;
+  Data.saveHighlights();
 }
 
 function restoreHighlights(id) {
-  var saved = articleHighlights[id];
+  var saved = Data.getHighlights()[id];
   if (!saved || saved.length === 0) return;
   var body = document.querySelector('.article-body');
   if (!body) return;
-  
+
   saved.forEach(function(text) {
     if (!text || text.length < 3) return;
     var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
@@ -88,7 +84,6 @@ function toggleImmersive() {
   immersiveMode = !immersiveMode;
   document.body.classList.toggle('immersive-mode', immersiveMode);
   if (!immersiveMode) {
-    // Restore UI elements
     if (currentArticle) {
       showReadingToolbar();
       var pm = document.getElementById('progressMap');
@@ -109,22 +104,22 @@ function saveScrollPos() {
   var articleH = article.scrollHeight;
   if (articleH < 100) return;
   var pct = scrollY / articleH;
+  var positions = Data.getScrollPositions();
   if (pct < 0.03) {
-    // Near top: remove saved position
-    delete articleScrollPos[currentArticle.id];
+    delete positions[currentArticle.id];
   } else {
-    articleScrollPos[currentArticle.id] = { pct: pct, time: Date.now() };
+    positions[currentArticle.id] = { pct: pct, time: Date.now() };
   }
-  PhiloDB.set('philo-scroll-pos', JSON.stringify(articleScrollPos));
+  Data.saveScrollPositions();
 }
 
 function restoreScrollPos(id) {
-  var saved = articleScrollPos[id];
+  var positions = Data.getScrollPositions();
+  var saved = positions[id];
   if (!saved || !saved.pct) return;
-  // Only restore if saved recently (within 7 days)
   if (Date.now() - saved.time > 7 * 86400000) {
-    delete articleScrollPos[id];
-    PhiloDB.set('philo-scroll-pos', JSON.stringify(articleScrollPos));
+    delete positions[id];
+    Data.saveScrollPositions();
     return;
   }
   setTimeout(function() {
@@ -137,7 +132,6 @@ function restoreScrollPos(id) {
       var contentEl = document.querySelector('.content');
       if (contentEl) contentEl.scrollTo({ top: targetY, behavior: 'smooth' });
     }
-    // Show a subtle resume indicator
     showResumeIndicator(targetY);
   }, 200);
 }
@@ -145,10 +139,8 @@ function restoreScrollPos(id) {
 function showResumeIndicator(scrollY) {
   var body = document.querySelector('.article-body');
   if (!body) return;
-  // Find the paragraph at this scroll position
   var paras = body.querySelectorAll('p, h3, h4');
   for (var i = 0; i < paras.length; i++) {
-    var rect = paras[i].getBoundingClientRect();
     var elTop = paras[i].offsetTop;
     if (elTop >= scrollY - 50) {
       var marker = document.createElement('div');
@@ -166,10 +158,10 @@ function updateProgressMap() {
   var map = document.getElementById('progressMap');
   var fill = document.getElementById('progressMapFill');
   if (!map || !fill || !currentArticle) return;
-  
+
   var article = document.querySelector('.article');
   if (!article) { map.style.display = 'none'; return; }
-  
+
   map.style.display = 'block';
   var contentEl = document.querySelector('.content');
   var scrollY = isMobile() ? window.scrollY : (contentEl ? contentEl.scrollTop : 0);

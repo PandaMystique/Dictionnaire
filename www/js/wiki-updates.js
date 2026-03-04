@@ -1,13 +1,13 @@
 // ===== CHECK FOR WIKI UPDATES =====
 var updateCheckRunning = false;
-var pendingUpdatesCount = parseInt(lsGet("philo-pending-updates", "0")) || 0;
+var pendingUpdatesCount = Data.getPendingUpdates();
 
 async function silentUpdateCheck() {
   if (updateCheckRunning) return;
   if (userEntries.length === 0) return;
   
   // Only check once per 24h
-  var lastCheck = lsGet('philo-last-update-check', '');
+  var lastCheck = Data.getLastUpdateCheck();
   if (lastCheck) {
     var elapsed = Date.now() - new Date(lastCheck).getTime();
     if (elapsed < 24 * 3600 * 1000) return;
@@ -67,10 +67,8 @@ async function silentUpdateCheck() {
   
   // Store result
   pendingUpdatesCount = outdatedCount;
-  PhiloDB.set('philo-pending-updates', String(outdatedCount));
-  try { localStorage.setItem('philo-pending-updates', String(outdatedCount)); } catch(e) {}
-  PhiloDB.set('philo-last-update-check', new Date().toISOString());
-  try { localStorage.setItem('philo-last-update-check', new Date().toISOString()); } catch(e) {}
+  Data.savePendingUpdates(outdatedCount);
+  Data.saveLastUpdateCheck();
   
   updateCheckRunning = false;
   console.log('[UpdateCheck] Done. ' + outdatedCount + ' updates available.');
@@ -233,12 +231,9 @@ async function checkForUpdates() {
   if (outdated.length === 0) {
     statusEl.innerHTML = '✓ Tous les articles sont à jour (' + checked + ' vérifiés)';
     pendingUpdatesCount = 0;
-    PhiloDB.set('philo-pending-updates', '0');
-    try { localStorage.setItem('philo-pending-updates', '0'); } catch(e) {}
+    Data.savePendingUpdates(0);
     actionsEl.innerHTML = '<button class="stats-close" onclick="this.closest(\'.stats-overlay\').remove()">Fermer</button>';
-    // Store check date
-    PhiloDB.set('philo-last-update-check', new Date().toISOString());
-    try { localStorage.setItem('philo-last-update-check', new Date().toISOString()); } catch(e) {}
+    Data.saveLastUpdateCheck();
     return;
   }
   
@@ -335,13 +330,11 @@ async function updateSelectedArticles() {
   
   // Save
   saveUserEntries();
-  PhiloDB.set('philo-last-update-check', new Date().toISOString());
-  try { localStorage.setItem('philo-last-update-check', new Date().toISOString()); } catch(e) {}
-  
+  Data.saveLastUpdateCheck();
+
   fillEl.style.width = '100%';
   pendingUpdatesCount = 0;
-  PhiloDB.set('philo-pending-updates', '0');
-  try { localStorage.setItem('philo-pending-updates', '0'); } catch(e) {}
+  Data.savePendingUpdates(0);
   statusEl.innerHTML = '✓ ' + updated + ' article' + (updated > 1 ? 's' : '') + ' mis à jour' +
     (failed > 0 ? ' (' + failed + ' échec' + (failed > 1 ? 's' : '') + ')' : '');
   resultsEl.innerHTML = '';

@@ -38,7 +38,19 @@ function init() {
   try { updateAndroidWidget(); } catch(e) {}
 
   // Restore data from IndexedDB (survives Android WebView localStorage wipes)
-  restoreFromIDB();
+  Data.restoreFromIDB().then(function(needsRefresh) {
+    if (needsRefresh) {
+      updateEntryCount();
+      buildAlphaNav();
+      buildFilterBar();
+      renderEntryList();
+      if (!currentArticle) showWelcome();
+      console.log('[Data] Restored entries from IndexedDB');
+    }
+    applyAppearance();
+    if (Data.pref('highlightMode')) document.body.classList.add('highlight-mode');
+    initTheme();
+  });
   
   // First-launch onboarding
   showOnboarding();

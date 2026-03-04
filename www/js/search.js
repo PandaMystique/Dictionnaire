@@ -1,46 +1,5 @@
 // ===== SEARCH HELPERS =====
-function normalizeText(str) {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-// Synonym groups for philosophy search
-var philosophySynonyms = {
-  'morale': ['ethique','vertu','devoir','bien','mal'],
-  'ethique': ['morale','vertu','devoir','bien','mal'],
-  'connaissance': ['savoir','epistemologie','science','verite'],
-  'epistemologie': ['connaissance','savoir','science'],
-  'savoir': ['connaissance','epistemologie'],
-  'verite': ['connaissance','certitude','evidence'],
-  'liberte': ['libre arbitre','autonomie','emancipation','volonte'],
-  'dieu': ['theologie','divin','absolu','transcendance'],
-  'theologie': ['dieu','divin','religion'],
-  'ame': ['esprit','psyche','conscience'],
-  'esprit': ['ame','conscience','pensee','intellect','entendement'],
-  'conscience': ['esprit','ame','cogito','sujet'],
-  'beau': ['beaute','esthetique','art','sublime'],
-  'esthetique': ['beau','beaute','art','sublime','gout'],
-  'politique': ['etat','pouvoir','democratie','gouvernement','cite'],
-  'etat': ['politique','pouvoir','souverainete','gouvernement'],
-  'justice': ['droit','equite','loi','morale'],
-  'raison': ['rationalisme','logos','logique','entendement'],
-  'logique': ['raison','raisonnement','syllogisme','dialectique'],
-  'existence': ['etre','ontologie','dasein','phenomenologie'],
-  'etre': ['existence','ontologie','substance','essence'],
-  'ontologie': ['etre','existence','metaphysique'],
-  'metaphysique': ['ontologie','etre','substance','essence','absolu'],
-  'langage': ['langue','signe','mot','semantique','hermeneutique'],
-  'bonheur': ['felicite','eudemonisme','plaisir','hedonisme'],
-  'mort': ['mortalite','finitude','neant'],
-  'temps': ['duree','devenir','eternite','temporalite'],
-  'nature': ['physis','cosmos','monde','univers'],
-  'histoire': ['historicisme','devenir','dialectique','progres'],
-  'perception': ['sensation','experience','phenomene','sensible'],
-  'idee': ['concept','notion','representation','forme'],
-  'materialisme': ['matiere','corps','physique'],
-  'idealisme': ['idee','esprit','transcendantal'],
-  'empirisme': ['experience','sensation','perception','induction'],
-  'rationalisme': ['raison','innee','deduction','descartes']
-};
+// Synonym data (philosophySynonyms) is in data.js
 
 function expandWithSynonyms(term) {
   var n = normalizeText(term);
