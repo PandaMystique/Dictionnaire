@@ -623,7 +623,6 @@ body::before {
   background: rgba(139, 37, 0, 0.04);
 }
 
-.article-back-link svg { }
 .article-back-link:hover svg { opacity: 1; }
 
 /* Keyboard hints */
@@ -1107,7 +1106,6 @@ body::before {
   border-radius: 4px; cursor: help;
 }
 .quality-hint:hover { opacity: 0.85; border-color: var(--muted-light); }
-.quality-hint svg { }
 
 .mobile-article-category-pill {
   display: inline-block;
@@ -1796,7 +1794,6 @@ body::before {
   .toc-float { width: 170px; font-size: 0.88rem; }
 }
 
-
 /* ===== EDITOR TOOLBAR ===== */
 .editor-toolbar {
   display: flex;
@@ -1997,7 +1994,6 @@ body::before {
   overflow-y: auto;
   margin-top: 0.5rem;
 }
-
 
 /* ===== PHILOSOPHER INDEX ===== */
 .philosopher-grid {
@@ -2254,8 +2250,6 @@ body::before {
 .dash-quick-btn svg { width: 24px; height: 24px; stroke-width: 1.6; flex-shrink: 0; }
 .dash-quick-btn span { font-size: 0.85rem; font-weight: 500; white-space: nowrap; }
 .dash-quick-btn:hover, .dash-quick-btn:active { border-color: var(--accent); color: var(--accent); background: var(--paper); }
-
-
 
 /* ===== WYSIWYG EDITOR ===== */
 .wysiwyg-area {
@@ -4270,7 +4264,6 @@ async function importFromWikibooks() {
         }
       }
     } catch (e) {
-      console.log('JSONP attempt failed for:', title, e.message);
     }
   }
   
@@ -4452,6 +4445,7 @@ function saveEntry() {
     userEntries.push(entry);
   }
   
+  invalidateEntriesCache();
   saveUserEntries();
   editingEntryId = null;
   
@@ -4465,6 +4459,7 @@ function saveEntry() {
 function deleteUserEntry(id) {
   if (!confirm('Supprimer cet article personnalisé ?')) return;
   userEntries = userEntries.filter(e => e.id !== id);
+  invalidateEntriesCache();
   saveUserEntries();
   updateEntryCount();
   buildAlphaNav();
@@ -4762,6 +4757,7 @@ function importJSON() {
           data.readArticles.forEach(id => readArticles.add(id));
           PhiloDB.set('philo-read', JSON.stringify([...readArticles]));
         }
+        invalidateEntriesCache();
         saveUserEntries();
         updateEntryCount();
         buildAlphaNav();
@@ -4859,13 +4855,13 @@ async function restoreFromIDB() {
       // Use IDB data if it has more entries than localStorage (localStorage was wiped)
       if (Array.isArray(parsed) && parsed.length > userEntries.length) {
         userEntries = parsed.map(function(e) { return validateEntry(e); }).filter(Boolean);
+        invalidateEntriesCache();
         try { localStorage.setItem('philo-user-entries', JSON.stringify(userEntries)); } catch(e) {}
         updateEntryCount();
         buildAlphaNav();
         buildFilterBar();
         renderEntryList();
         if (!currentArticle) showWelcome();
-        console.log('[PhiloDB] Restored', parsed.length, 'entries from IndexedDB');
       }
     }
     
@@ -4982,7 +4978,6 @@ async function restoreFromIDB() {
     applyAppearance();
     deduplicateEntries(); // Clean up any duplicates from IDB/localStorage sync
   } catch (e) {
-    console.log('[PhiloDB] IDB restore skipped:', e.message);
   }
 }
 
@@ -5014,7 +5009,6 @@ function deduplicateEntries() {
     userEntries = userEntries.filter(function(_, idx) { return !removeSet.has(idx); });
     invalidateEntriesCache();
     saveUserEntries();
-    console.log('[Dedup] Removed ' + toRemove.length + ' duplicate entries');
   }
 }
 
@@ -5379,7 +5373,7 @@ function renderEntryList() {
   
   // Apply sort
   if (sortMode === 'category') {
-    entries.sort(function(a,b) { return a.category.localeCompare(b.category) || a.term.localeCompare(b.term); });
+    entries.sort(function(a,b) { return (a.category||'').localeCompare(b.category||'') || a.term.localeCompare(b.term); });
   } else if (sortMode === 'unread') {
     entries.sort(function(a,b) {
       var aR = readArticles.has(a.id) ? 1 : 0;
@@ -6258,10 +6252,13 @@ function showStats() {
   var catCounts = {};
   var catRead = {};
   all.forEach(function(e) {
+    if (!e.category) return;
     var cats = e.category.split(' \u00b7 ');
     cats.forEach(function(c) {
-      catCounts[c] = (catCounts[c] || 0) + 1;
-      if (readArticles.has(e.id)) catRead[c] = (catRead[c] || 0) + 1;
+      var ct = c.trim();
+      if (!ct) return;
+      catCounts[ct] = (catCounts[ct] || 0) + 1;
+      if (readArticles.has(e.id)) catRead[ct] = (catRead[ct] || 0) + 1;
     });
   });
   var sortedCats = Object.keys(catCounts).sort(function(a,b) { return catCounts[b] - catCounts[a]; });
@@ -7346,6 +7343,8 @@ function sanitizeHtml(html) {
   html = html.replace(/href\s*=\s*["']\s*javascript:[^"']*["']/gi, 'href="#"');
   // Remove data: URIs in src (except images)
   html = html.replace(/src\s*=\s*["']\s*data:(?!image\/)[^"']*["']/gi, '');
+  // Remove style attributes containing expressions or urls
+  html = html.replace(/style\s*=\s*["'][^"']*(?:expression|url\s*\(|javascript)[^"']*["']/gi, '');
   // Remove <iframe>, <object>, <embed>, <form>, <input type=hidden>
   html = html.replace(/<(iframe|object|embed|form|meta|link|base)[\s\S]*?(\/?>|<\/\1>)/gi, '');
   return html;
@@ -8155,6 +8154,7 @@ var pendingUpdatesCount = parseInt(lsGet("philo-pending-updates", "0")) || 0;
 async function silentUpdateCheck() {
   if (updateCheckRunning) return;
   if (userEntries.length === 0) return;
+  try {
   
   // Only check once per 24h
   var lastCheck = lsGet('philo-last-update-check', '');
@@ -8164,8 +8164,6 @@ async function silentUpdateCheck() {
   }
   
   updateCheckRunning = true;
-  console.log('[UpdateCheck] Starting silent check...');
-  
   var wikiEntries = userEntries.filter(function(e) {
     return e._userEntry && (e._wikiTitle || e._wikiSource);
   });
@@ -8212,7 +8210,6 @@ async function silentUpdateCheck() {
       await new Promise(function(r) { setTimeout(r, 100); });
     }
   } catch(e) {
-    console.log('[UpdateCheck] Error:', e.message);
   }
   
   // Store result
@@ -8223,8 +8220,6 @@ async function silentUpdateCheck() {
   try { localStorage.setItem('philo-last-update-check', new Date().toISOString()); } catch(e) {}
   
   updateCheckRunning = false;
-  console.log('[UpdateCheck] Done. ' + outdatedCount + ' updates available.');
-  
   // Refresh welcome page if currently shown
   if (!currentArticle && outdatedCount > 0) {
     showWelcome();
@@ -8234,6 +8229,7 @@ async function silentUpdateCheck() {
   if (outdatedCount > 0) {
     sendUpdateNotification(outdatedCount);
   }
+  } catch(e) { updateCheckRunning = false; }
 }
 
 function sendUpdateNotification(count) {
@@ -8265,7 +8261,7 @@ function sendUpdateNotification(count) {
           }]
         });
       }
-    } catch(e) { console.log('[Widget] Notification error:', e); }
+    } catch(e) {}
   }
 }
 
@@ -8371,7 +8367,6 @@ async function checkForUpdates() {
         });
       }
     } catch (e) {
-      console.log('Update check batch failed:', e.message);
     }
     
     await new Promise(function(r) { setTimeout(r, 100); });
