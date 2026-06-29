@@ -493,6 +493,30 @@ body::before {
 }
 
 .article-tag:hover { background: rgba(139, 37, 0, 0.12); border-color: var(--accent); }
+.cited-in-more {
+  display: inline-flex; align-items: center;
+  padding: 0.3rem 0.6rem; font-size: 0.82rem; color: var(--muted-light);
+  align-self: center;
+}
+
+/* ===== ARTICLE FOOTER META (related / cited / custom tags) ===== */
+.article-meta {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+.article-meta-section { margin-top: 1.5rem; }
+.article-meta-section:first-child { margin-top: 0; }
+.article-meta-label {
+  display: block;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+  margin-bottom: 0.6rem;
+}
+.article-meta-tags { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.article-meta-section .custom-tags-wrap { margin-top: 0; }
 
 .article-refs {
   margin-top: 2rem;
@@ -1272,7 +1296,79 @@ body::before {
 }
 .auto-link:hover { color: var(--accent-light); border-bottom-style: solid; }
 
-/* ===== SEARCH FILTERS ===== */
+/* ===== TERM PREVIEW POPOVER ===== */
+.term-preview {
+  position: fixed;
+  z-index: 2000;
+  max-width: 320px;
+  min-width: 200px;
+  padding: 0.85rem 1rem;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(4px);
+  transition: opacity 0.15s, transform 0.15s, visibility 0.15s;
+  pointer-events: none;
+}
+.term-preview.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+.term-preview-title { font-family: var(--serif); font-size: 1.1rem; font-weight: 600; color: var(--ink); line-height: 1.2; }
+.term-preview-cat { font-size: 0.78rem; color: var(--accent); margin-top: 0.15rem; }
+.term-preview-def {
+  font-size: 0.92rem; line-height: 1.55; color: var(--muted); margin-top: 0.5rem;
+  display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.term-preview-hint { font-size: 0.72rem; color: var(--muted-light); margin-top: 0.6rem; display: none; }
+[data-theme="dark"] .term-preview { background: var(--paper-warm); box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+@media (hover: none) {
+  .term-preview-hint { display: block; }
+  .term-preview { pointer-events: auto; }
+}
+
+/* ===== IN-ARTICLE SEARCH ===== */
+.article-search-bar {
+  position: fixed;
+  top: 1rem; left: 50%; transform: translateX(-50%) translateY(-150%);
+  z-index: 1900;
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.4rem 0.5rem 0.4rem 0.75rem;
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  width: min(440px, calc(100vw - 2rem));
+  opacity: 0; visibility: hidden;
+  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+}
+.article-search-bar.visible { opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0); }
+.article-search-icon { color: var(--muted-light); flex-shrink: 0; }
+#articleSearchInput {
+  flex: 1; min-width: 0; border: none; outline: none; background: none;
+  font-family: var(--body); font-size: 0.98rem; color: var(--ink); padding: 0.2rem 0;
+}
+.article-search-count { font-size: 0.82rem; color: var(--muted-light); flex-shrink: 0; min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.article-search-nav, .article-search-close {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; flex-shrink: 0;
+  border: none; background: none; border-radius: 6px;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+}
+.article-search-nav:hover, .article-search-close:hover { background: var(--paper-warm); color: var(--accent); }
+.article-search-close { color: var(--muted-light); }
+[data-theme="dark"] .article-search-bar { background: var(--paper-warm); box-shadow: 0 6px 24px rgba(0,0,0,0.5); }
+@media (max-width: 768px) {
+  .article-search-bar { top: calc(var(--safe-top) + 0.5rem); }
+}
+mark.article-search-hit {
+  background: rgba(212,168,67,0.35); color: inherit; border-radius: 2px;
+  padding: 0 1px; scroll-margin-top: 80px;
+}
+mark.article-search-hit.current { background: var(--gold); color: #1a1610; box-shadow: 0 0 0 2px var(--gold); }
+[data-theme="dark"] mark.article-search-hit { background: rgba(212,168,67,0.3); color: var(--ink); }
+[data-theme="dark"] mark.article-search-hit.current { background: var(--gold); color: #1a1610; }
+
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1819,15 +1915,15 @@ body::before {
 
 /* ===== FOOTNOTES ===== */
 .footnote-ref {
-  display: inline-block;
-  font-size: 0.7em;
+  font-size: 0.72em;
   vertical-align: super;
   line-height: 0;
   color: var(--accent);
   cursor: pointer;
-  margin: 0 1px;
   font-weight: 600;
   transition: color 0.15s;
+  /* No display:inline-block and no left margin: an atomic inline-block would let the
+     marker wrap away from its word; gluing it tight keeps the note attached. */
 }
 
 .footnote-ref:hover { color: var(--accent-light); text-decoration: underline; }
@@ -1861,6 +1957,31 @@ body::before {
   min-width: 1.5em;
   text-align: right;
 }
+.footnote-text { flex: 1; min-width: 0; }
+.footnote-back {
+  color: var(--accent);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 600;
+  margin-right: 0.15rem;
+}
+.footnote-back:hover { text-decoration: underline; color: var(--accent-light); }
+.footnote-backs .footnote-back { font-style: italic; margin-right: 0.25rem; }
+.footnote-item.fn-flash { animation: fnFlash 1.2s ease; border-radius: 4px; }
+@keyframes fnFlash {
+  0%, 30% { background: rgba(212,168,67,0.28); }
+  100% { background: transparent; }
+}
+sup.footnote-ref.fn-flash {
+  animation: fnFlashSup 1.2s ease; border-radius: 3px;
+}
+@keyframes fnFlashSup {
+  0%, 30% { background: var(--gold); color: #1a1610; outline: 2px solid var(--gold); }
+  100% { background: transparent; outline-color: transparent; }
+}
+.biblio-section { margin-top: 1.25rem; padding-top: 1.25rem; }
+.biblio-item { color: var(--muted); }
+.footnote-bullet { flex-shrink: 0; color: var(--accent); min-width: 1.5em; text-align: right; }
 
 /* ===== SEARCH SUGGESTIONS ===== */
 .search-suggestions {
@@ -2259,6 +2380,48 @@ body::before {
   font-weight: 600; transition: color 0.15s;
 }
 .parcours-banner-next:hover { color: var(--gold); }
+
+/* ===== PARCOURS DETAIL OVERLAY ===== */
+.parcours-detail-panel { max-width: 480px; }
+.parcours-detail-head { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.85rem; }
+.parcours-detail-icon {
+  width: 48px; height: 48px; border-radius: 10px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; background: rgba(139,37,0,0.07);
+}
+[data-theme="dark"] .parcours-detail-icon { background: rgba(212,115,74,0.12); }
+.parcours-detail-sub { font-size: 0.88rem; color: var(--muted-light); margin-top: 0.15rem; }
+.parcours-detail-intro {
+  font-size: 0.98rem; line-height: 1.6; color: var(--muted);
+  margin: 0 0 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-light);
+}
+.parcours-detail-list { max-height: 42vh; overflow-y: auto; margin-bottom: 1rem; }
+.parcours-detail-item {
+  display: flex; align-items: center; gap: 0.7rem;
+  padding: 0.55rem 0.4rem; cursor: pointer; border-radius: 8px;
+  transition: background 0.15s;
+}
+.parcours-detail-item:hover { background: var(--paper-warm); }
+.parcours-detail-num {
+  width: 24px; height: 24px; flex-shrink: 0; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.82rem; font-weight: 600;
+  background: var(--paper-warm); color: var(--muted-light);
+  border: 1px solid var(--border-light);
+}
+.parcours-detail-item.done .parcours-detail-num {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.parcours-detail-name {
+  flex: 1; min-width: 0; font-family: var(--serif); font-size: 1rem;
+  color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.parcours-detail-cat {
+  font-size: 0.82rem; color: var(--muted-light); flex-shrink: 0;
+  max-width: 38%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.parcours-detail-actions { display: flex; gap: 0.6rem; }
+.parcours-detail-actions .btn { flex: 1; }
 
 /* ===== NOTES SEARCH ===== */
 .notes-search-results {
@@ -2824,6 +2987,9 @@ body.has-toolbar .focus-toggle { display: none !important; }
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
   </button>
   <div class="rtb-sep"></div>
+  <button class="rtb-btn" id="rtbSearch" onclick="toggleArticleSearch()" title="Rechercher dans l'article">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  </button>
   <button class="rtb-btn" onclick="toggleBookmark()" id="rtbBookmark" title="Favori">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"/></svg>
   </button>
@@ -2836,6 +3002,30 @@ body.has-toolbar .focus-toggle { display: none !important; }
   </button>
   <button class="rtb-btn" onclick="toggleImmersive()" title="Mode immersif">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+  </button>
+</div>
+
+<!-- TERM PREVIEW POPOVER -->
+<div class="term-preview" id="termPreview" role="tooltip" aria-hidden="true">
+  <div class="term-preview-title" id="termPreviewTitle"></div>
+  <div class="term-preview-cat" id="termPreviewCat"></div>
+  <div class="term-preview-def" id="termPreviewDef"></div>
+  <div class="term-preview-hint">Toucher pour ouvrir</div>
+</div>
+
+<!-- IN-ARTICLE SEARCH BAR -->
+<div class="article-search-bar" id="articleSearchBar" aria-hidden="true">
+  <svg class="article-search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+  <input type="text" id="articleSearchInput" placeholder="Rechercher dans l'article…" autocomplete="off" spellcheck="false">
+  <span class="article-search-count" id="articleSearchCount"></span>
+  <button class="article-search-nav" id="articleSearchPrev" onclick="articleSearchStep(-1)" title="Précédent (Maj+Entrée)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 15l-6-6-6 6"/></svg>
+  </button>
+  <button class="article-search-nav" id="articleSearchNext" onclick="articleSearchStep(1)" title="Suivant (Entrée)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+  <button class="article-search-close" onclick="closeArticleSearch()" title="Fermer (Échap)">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
   </button>
 </div>
 
@@ -3124,7 +3314,7 @@ let userEntries = safeParse(lsGet('philo-user-entries', '[]'), []);
 
 var _entriesCache = null;
 var _entriesCacheDirty = true;
-function invalidateEntriesCache() { _entriesCache = null; _entriesCacheDirty = true; }
+function invalidateEntriesCache() { _entriesCache = null; _entriesCacheDirty = true; _citationIndex = null; }
 function getAllEntries() {
   if (_entriesCache && !_entriesCacheDirty) return _entriesCache;
   _entriesCache = [...dictionary, ...userEntries].sort((a, b) => (a.sortName || a.term).localeCompare(b.sortName || b.term, 'fr'));
@@ -3236,6 +3426,15 @@ function updateThemeIcons(theme) {
 // ===== SEARCH HELPERS =====
 function normalizeText(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function debounce(fn, ms) {
+  var t = null;
+  return function() {
+    var ctx = this, args = arguments;
+    if (t) clearTimeout(t);
+    t = setTimeout(function() { fn.apply(ctx, args); }, ms);
+  };
 }
 
 // Synonym groups for philosophy search
@@ -3370,7 +3569,7 @@ function autoLinkContent(html, currentId) {
     // Match whole word, case insensitive, but not inside HTML tags or already linked
     const regex = new RegExp(`(?<![<\\/\\w"=])\\b(${escaped})\\b(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
     if (regex.test(html)) {
-      html = html.replace(regex, `<a class="auto-link" onclick="navigateTo('${safeId(id)}')">$1</a>`);
+      html = html.replace(regex, `<a class="auto-link" data-link-id="${safeId(id)}" onclick="navigateTo('${safeId(id)}')">$1</a>`);
       linked.add(id);
     }
     } catch(e) { /* skip term with bad regex */ }
@@ -3404,6 +3603,48 @@ function detectRelated(entry) {
   // Rank by frequency, then by term length (longer = more specific signal)
   scored.sort((a, b) => b.count - a.count || b.length - a.length);
   return scored.slice(0, 8).map(s => s.id);
+}
+
+// ===== REVERSE CITATIONS ("Cité dans") =====
+// Index maps normalized tag → list of article ids that carry that tag.
+// Tags are the philosophers/concepts an article references, so inverting them
+// yields, for a given term, every article that cites it.
+var _citationIndex = null;
+
+function buildCitationIndex() {
+  _citationIndex = {};
+  getAllEntries().forEach(function(e) {
+    if (!Array.isArray(e.tags)) return;
+    var seen = {};
+    e.tags.forEach(function(t) {
+      var k = normalizeText(String(t));
+      if (!k || seen[k]) return;
+      seen[k] = 1;
+      (_citationIndex[k] = _citationIndex[k] || []).push(e.id);
+    });
+  });
+}
+
+function getCitedIn(entry) {
+  if (!entry) return [];
+  if (!_citationIndex) buildCitationIndex();
+  // Match on the full term and, for philosophers, on the surname (tags usually
+  // carry the surname: "Merleau-Ponty", not "Maurice Merleau-Ponty").
+  var keys = [normalizeText(entry.term)];
+  if (entry.isPerson && entry.sortName) {
+    var sn = normalizeText(entry.sortName);
+    if (keys.indexOf(sn) < 0) keys.push(sn);
+  }
+  var idSet = {};
+  keys.forEach(function(k) {
+    (_citationIndex[k] || []).forEach(function(id) { idSet[id] = 1; });
+  });
+  delete idSet[entry.id];
+  var all = getAllEntries();
+  return Object.keys(idSet)
+    .map(function(id) { return all.find(function(e) { return e.id === id; }); })
+    .filter(Boolean)
+    .sort(function(a, b) { return (a.sortName || a.term).localeCompare(b.sortName || b.term, 'fr'); });
 }
 
 // ===== MASS IMPORT =====
@@ -3714,15 +3955,18 @@ function parseMediaWiki(wikitext) {
   
   // Build refs from <ref> tags + bibliography (BOTH, not either/or)
   const allRefs = [];
-  // From inline refs first (these are the footnotes that appear in body)
+  // Inline refs first — keep ALL of them: they are index-referenced by <x-ref n="N"> markers
+  // in the body, so filtering would shift indices and break footnote links.
   for (const r of refs) {
     allRefs.push(convertInlineWiki(r));
   }
-  // Then bibliography entries
+  // Bibliography entries — these are appended and never index-referenced, so empties
+  // (e.g. from unsupported templates) can be safely dropped here.
   for (const bib of bibLines) {
-    allRefs.push(convertInlineWiki(bib));
+    const formatted = convertInlineWiki(bib);
+    if (formatted.replace(/<[^>]+>/g, '').trim().length > 0) allRefs.push(formatted);
   }
-  
+
   return { html: sanitizeHtml(html), refs: allRefs.map(function(r) { return sanitizeHtml(r); }) };
 }
 
@@ -3823,7 +4067,68 @@ function convertWikiLinesToHtml(lines) {
   return html;
 }
 
+function formatCitationTemplate(inner) {
+  // inner is the content between {{ and }}, e.g. "Ouvrage|auteur=...|titre=..."
+  var parts = inner.split('|');
+  var name = parts.shift().trim().toLowerCase();
+  if (!/^(ouvrage|article|chapitre|lien\s*web|lienweb|cite\s*book|cite\s*journal|cite\s*web)$/.test(name)) {
+    return null; // not a bibliographic citation template
+  }
+  var params = {};
+  parts.forEach(function(p) {
+    var eq = p.indexOf('=');
+    if (eq > 0) {
+      var k = p.slice(0, eq).trim().toLowerCase().replace(/é/g, 'e');
+      params[k] = p.slice(eq + 1).trim();
+    }
+  });
+  var get = function() {
+    for (var i = 0; i < arguments.length; i++) {
+      if (params[arguments[i]]) return params[arguments[i]];
+    }
+    return '';
+  };
+  var bits = [];
+  var author = get('auteur', 'auteur1', 'nom');
+  if (!author && (get('nom1') || get('prenom1'))) author = (get('prenom1') + ' ' + get('nom1')).trim();
+  if (author) bits.push(author);
+  var titre = get('titre', 'title');
+  if (titre) {
+    var t = '<em>' + titre + '</em>';
+    var sub = get('sous-titre', 'sous titre');
+    if (sub) t += '. ' + sub;
+    bits.push(t);
+  }
+  var lieu = get('lieu', 'location');
+  if (lieu) bits.push(lieu);
+  var editeur = get('editeur', 'publisher');
+  if (editeur) bits.push(editeur);
+  var annee = get('annee', 'date', 'year');
+  if (annee) bits.push(annee);
+  var page = get('passage', 'page', 'pages');
+  if (page) bits.push('p.\u00a0' + page);
+  return bits.join(', ');
+}
+
+function expandCitationTemplates(text) {
+  // Replace flat {{Ouvrage|...}} / {{Article|...}} citation templates with formatted text.
+  // Run repeatedly to catch templates revealed after an outer one is replaced.
+  var prev;
+  var guard = 0;
+  do {
+    prev = text;
+    text = text.replace(/\{\{([^{}]*)\}\}/g, function(m, inner) {
+      var formatted = formatCitationTemplate(inner);
+      return formatted !== null ? formatted : m;
+    });
+    guard++;
+  } while (text !== prev && guard < 5);
+  return text;
+}
+
 function convertInlineWiki(text) {
+  // Bibliographic citation templates first (so their inner text survives the generic strip)
+  text = expandCitationTemplates(text);
   // Bold: '''text''' → <strong>
   text = text.replace(/'''(.+?)'''/g, '<strong>$1</strong>');
   // Italic: ''text'' → <em>
@@ -4583,43 +4888,87 @@ function applyFontSize() {
 
 // ===== FOOTNOTES =====
 function buildFootnotes(html, refs) {
-  // Inline refs are stored as [REF:N] placeholders that point into refs[N-1].
-  // Resolve them to clickable superscripts.
-  const usedRefs = new Map(); // refIndex (1-based) → footnote position (1-based)
-  let footPos = 0;
-  
+  // Inline refs are stored as <x-ref n="N"> markers pointing into refs[N-1].
+  // We deduplicate notes by their text: the same source cited several times becomes
+  // ONE note with several back-links (a, b, c…). Bibliography entries (refs never
+  // cited inline) are shown in a separate "Bibliographie" block, and any that merely
+  // repeat an inline note are dropped.
+  const byText = new Map();   // normalized text → note entry
+  const notes = [];           // inline notes, in order of first appearance
+  let citeCounter = 0;
+  const usedIdx = new Set();
+
   html = html.replace(/<x-ref n="(\d+)"><\/x-ref>/g, (m, n) => {
     const refIdx = parseInt(n, 10);
-    if (refIdx < 1 || refIdx > refs.length) return ''; // dangling
-    let pos = usedRefs.get(refIdx);
-    if (!pos) {
-      footPos++;
-      pos = footPos;
-      usedRefs.set(refIdx, pos);
-    }
+    if (refIdx < 1 || refIdx > refs.length) return ''; // dangling marker
+    usedIdx.add(refIdx);
     const refText = refs[refIdx - 1] || '';
-    return '<span class="footnote-ref" onclick="document.getElementById(\'fn-' + pos + '\').scrollIntoView({behavior:\'smooth\',block:\'center\'})" title="' + escapeAttr(refText.replace(/<[^>]+>/g, '').substring(0, 100)) + '">[' + pos + ']</span>';
+    const key = refText.replace(/<[^>]+>/g, '').trim();
+    if (!key) return ''; // empty inline ref → no superscript
+    let entry = byText.get(key);
+    if (!entry) {
+      entry = { pos: notes.length + 1, text: refText, backlinks: [] };
+      byText.set(key, entry);
+      notes.push(entry);
+    }
+    citeCounter++;
+    const backId = 'fnref-' + citeCounter;
+    entry.backlinks.push(backId);
+    return '<sup class="footnote-ref" id="' + backId + '" onclick="scrollToFootnote(' + entry.pos + ')" title="' + escapeAttr(key.substring(0, 100)) + '">[' + entry.pos + ']</sup>';
   });
-  
-  // Build the notes array in citation order
-  const orderedRefs = [];
-  usedRefs.forEach((pos, refIdx) => { orderedRefs[pos - 1] = refs[refIdx - 1]; });
-  
-  // Add bibliography entries (refs not cited inline) as additional notes
-  const cited = new Set(usedRefs.keys());
+
+  // Bibliography: refs not cited inline, non-empty, not duplicating an inline note
+  const biblio = [];
   refs.forEach((r, i) => {
-    if (!cited.has(i + 1)) orderedRefs.push(r);
+    if (usedIdx.has(i + 1)) return;
+    const key = (r || '').replace(/<[^>]+>/g, '').trim();
+    if (!key || byText.has(key)) return;
+    byText.set(key, true);
+    biblio.push(r);
   });
-  
-  // Build footnotes section
+
+  // Render
   let footnotesHtml = '';
-  if (orderedRefs.length > 0) {
-    footnotesHtml = '<div class="footnotes-section"><h4>Notes &amp; références (' + orderedRefs.length + ')</h4>' +
-      orderedRefs.map((n, i) => '<div class="footnote-item" id="fn-' + (i + 1) + '"><span class="footnote-num">' + (i + 1) + '.</span><span>' + n + '</span></div>').join('') +
-      '</div>';
+  if (notes.length > 0) {
+    footnotesHtml += '<div class="footnotes-section"><h4>Notes &amp; références (' + notes.length + ')</h4>' +
+      notes.map(function(e) {
+        var back;
+        if (e.backlinks.length <= 1) {
+          back = '<a class="footnote-back" onclick="scrollToCitation(\'' + e.backlinks[0] + '\')" title="Retour au texte">\u2191</a> ';
+        } else {
+          back = '<span class="footnote-backs">' + e.backlinks.map(function(b, j) {
+            return '<a class="footnote-back" onclick="scrollToCitation(\'' + b + '\')" title="Retour au texte">' + String.fromCharCode(97 + j) + '</a>';
+          }).join('') + '</span> ';
+        }
+        return '<div class="footnote-item" id="fn-' + e.pos + '"><span class="footnote-num">' + e.pos + '.</span><span class="footnote-text">' + back + e.text + '</span></div>';
+      }).join('') + '</div>';
   }
-  
+  if (biblio.length > 0) {
+    footnotesHtml += '<div class="footnotes-section biblio-section"><h4>Bibliographie (' + biblio.length + ')</h4>' +
+      biblio.map(function(b) {
+        return '<div class="footnote-item biblio-item"><span class="footnote-bullet">\u2022</span><span>' + b + '</span></div>';
+      }).join('') + '</div>';
+  }
+
   return { html, footnotesHtml };
+}
+
+// Scroll from a citation superscript down to its note (and flash it)
+function scrollToFootnote(pos) {
+  var el = document.getElementById('fn-' + pos);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('fn-flash');
+  setTimeout(function() { el.classList.remove('fn-flash'); }, 1200);
+}
+
+// Scroll from a note back up to the citation in the text (and flash it)
+function scrollToCitation(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  el.classList.add('fn-flash');
+  setTimeout(function() { el.classList.remove('fn-flash'); }, 1200);
 }
 
 // ===== TABLE OF CONTENTS =====
@@ -5204,6 +5553,7 @@ function init() {
   try { buildAlphaNav(); } catch(e) { console.warn('buildAlphaNav:', e); }
   try { buildFilterBar(); } catch(e) { console.warn('buildFilterBar:', e); }
   try { buildMobileAlphaStrip(); } catch(e) { console.warn('buildMobileAlphaStrip:', e); }
+  try { initTermPreview(); } catch(e) { console.warn('initTermPreview:', e); }
   try { renderEntryList(); } catch(e) { console.warn('renderEntryList:', e); }
   showWelcome();
   
@@ -5335,13 +5685,22 @@ function init() {
   
   // Keyboard shortcuts
   document.addEventListener('keydown', (e) => {
+    // Ctrl/Cmd+F: in-article search when reading
+    if ((e.key === 'f' || e.key === 'F') && (e.ctrlKey || e.metaKey) && currentArticle) {
+      e.preventDefault();
+      openArticleSearch();
+      return;
+    }
     if (e.key === '/' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
       e.preventDefault();
       if (isMobile()) { switchTab('search'); } 
       else { document.getElementById('searchInput').focus(); }
     }
     if (e.key === 'Escape') {
-      // Close panels first
+      // Close in-article search first
+      var asBar = document.getElementById('articleSearchBar');
+      if (asBar && asBar.classList.contains('visible')) { closeArticleSearch(); return; }
+      // Close panels next
       var tocOpen = document.getElementById('tocPanelOverlay')?.classList.contains('open');
       var settingsOpen = document.getElementById('settingsOverlay')?.classList.contains('open');
       if (tocOpen) { closeTocPanel(); return; }
@@ -5651,6 +6010,7 @@ function showArticle(id) {
   trackRead(id);
   closeTocPanel();
   closeSettings();
+  if (typeof closeArticleSearch === 'function') closeArticleSearch();
   const content = document.getElementById('content');
   if (!content) return;
   const isBookmarked = bookmarks.includes(entry.id);
@@ -5686,12 +6046,22 @@ function showArticle(id) {
   if (relatedIds.length > 0) {
     const relatedEntries = relatedIds.map(rid => allEntries.find(e => e.id === rid)).filter(Boolean);
     if (relatedEntries.length > 0) {
-      relatedHtml = `<div class="article-tags">${relatedEntries.map(r => 
+      relatedHtml = `<div class="article-meta-tags">${relatedEntries.map(r => 
         `<span class="article-tag" onclick="navigateTo('${safeId(r.id)}')">${escapeHtml(r.term)}</span>`).join('')}</div>`;
     }
   }
   
-  let tagsHtml = entry.tags.map(t => `<span class="article-tag" onclick="searchTag(${jsAttr(t)})">${escapeHtml(t)}</span>`).join('');
+  // Reverse citations: other articles that reference this one (via their tags)
+  let citedInHtml = '';
+  const citedIn = getCitedIn(entry).filter(c => relatedIds.indexOf(c.id) < 0);
+  if (citedIn.length > 0) {
+    const shown = citedIn.slice(0, 24);
+    citedInHtml = `<div class="article-meta-tags">${shown.map(c => 
+      `<span class="article-tag" onclick="navigateTo(${jsAttr(safeId(c.id))})">${escapeHtml(c.term)}</span>`).join('')}` +
+      (citedIn.length > shown.length ? `<span class="cited-in-more">+${citedIn.length - shown.length}</span>` : '') +
+      `</div>`;
+  }
+  
   let customTagsHtml = buildCustomTagsHtml(id);
   
   const wikiUrl = `https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie/${encodeURIComponent(entry.term.replace(/ & /g, '/').replace(/ \(logique\)/, '_(logique)'))}`;
@@ -5784,6 +6154,23 @@ function showArticle(id) {
   // Parcours banner
   var parcoursBannerHtml = buildParcoursBanner(id);
 
+  // Footer meta block: category + related + cited + personal tags, one separator, consistent labels
+  var metaInner = '';
+  if (entry.category) {
+    metaInner += '<div class="article-meta-section">' +
+      (isMobile() ? '<span class="mobile-article-category-pill">' + escapeHtml(entry.category) + '</span>'
+                  : '<div class="article-category" style="margin:0;">' + escapeHtml(entry.category) + '</div>') +
+      '</div>';
+  }
+  if (relatedHtml) {
+    metaInner += '<div class="article-meta-section"><span class="article-meta-label">Articles li\u00e9s</span>' + relatedHtml + '</div>';
+  }
+  if (citedInHtml) {
+    metaInner += '<div class="article-meta-section"><span class="article-meta-label">Cit\u00e9 dans</span>' + citedInHtml + '</div>';
+  }
+  metaInner += '<div class="article-meta-section"><span class="article-meta-label">\u00c9tiquettes</span>' + customTagsHtml + '</div>';
+  var metaBlock = '      <div class="article-meta">' + metaInner + '</div>';
+
   content.innerHTML = '\n' +
     '    <article class="article article-enter">\n' +
     backLinkHtml + '\n' +
@@ -5803,12 +6190,7 @@ function showArticle(id) {
     '        <div class="article-body">' + linkedContent + '</div>\n' +
     '      </div>\n' +
     notesHtml + '\n' +
-    (entry.category ? '      <div style="margin-top:2rem;padding-top:1.5rem;border-top:1px solid var(--border);">' + (isMobile() ? '<span class="mobile-article-category-pill">' + escapeHtml(entry.category) + '</span>' : '<div class="article-category">' + escapeHtml(entry.category) + '</div>') + '</div>\n' : '') +
-    '      <div class="article-tags" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);">\n' +
-    '        <span style="font-size: 0.88rem;color:var(--muted);align-self:center;margin-right:0.5rem;">Mots-cl\u00e9s</span>\n' +
-    tagsHtml + '\n' + customTagsHtml + '\n' +
-    '      </div>\n' +
-    (relatedHtml ? '      <div style="margin-top:1rem;"><span style="font-size: 0.88rem;color:var(--muted);margin-right:0.5rem;">Articles li\u00e9s</span>' + relatedHtml + '</div>' : '') + '\n' +
+    metaBlock + '\n' +
     collectHtml + '\n' +
     footnoteResult.footnotesHtml + '\n' +
     (!entry._userEntry ? '      <div class="article-source"><a href="' + wikiUrl + '" target="_blank" rel="noopener">Lire sur Wikilivres \u2197</a></div>' : '') + '\n' +
@@ -5877,6 +6259,15 @@ function showArticle(id) {
     if (articleScrollPos[id]) {
       restoreScrollPos(id);
     }
+  }
+  
+  // If we arrived here from a global search, highlight those terms in the article
+  if (searchQuery && searchQuery.trim().length >= 2) {
+    var sq = searchQuery.trim();
+    // Defer so layout is settled before scrolling to first match
+    setTimeout(function() {
+      if (currentArticle && currentArticle.id === id) openArticleSearch(sq);
+    }, 250);
   }
 }
 
@@ -6587,6 +6978,237 @@ function markVisitedLinks() {
     var m = onclick.match(/navigateTo\('([^']+)'\)/);
     if (m && readArticles.has(m[1])) a.classList.add('visited');
   });
+}
+
+// ===== FEATURE: TERM PREVIEW POPOVER =====
+var _previewTimer = null;
+var _previewLongPress = null;
+var _previewInit = false;
+
+function showTermPreview(linkEl) {
+  var id = linkEl.getAttribute('data-link-id');
+  if (!id) return;
+  var entry = getAllEntries().find(function(e) { return e.id === id; });
+  if (!entry) return;
+  var pop = document.getElementById('termPreview');
+  if (!pop) return;
+  
+  document.getElementById('termPreviewTitle').textContent = entry.term;
+  var catEl = document.getElementById('termPreviewCat');
+  catEl.textContent = entry.category || '';
+  catEl.style.display = entry.category ? 'block' : 'none';
+  var def = (entry.definition || '').replace(/<[^>]+>/g, '').replace(/<x-ref[^>]*><\/x-ref>/g, '').trim();
+  document.getElementById('termPreviewDef').textContent = def || 'Aucune définition disponible.';
+  
+  // Position: above the link if room, else below
+  pop.classList.add('visible');
+  pop.setAttribute('aria-hidden', 'false');
+  var rect = linkEl.getBoundingClientRect();
+  var popRect = pop.getBoundingClientRect();
+  var margin = 8;
+  var left = rect.left + rect.width / 2 - popRect.width / 2;
+  left = Math.max(margin, Math.min(left, window.innerWidth - popRect.width - margin));
+  var top = rect.top - popRect.height - margin;
+  if (top < margin) top = rect.bottom + margin; // not enough room above → below
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+}
+
+function hideTermPreview() {
+  if (_previewTimer) { clearTimeout(_previewTimer); _previewTimer = null; }
+  var pop = document.getElementById('termPreview');
+  if (pop) { pop.classList.remove('visible'); pop.setAttribute('aria-hidden', 'true'); }
+}
+
+function initTermPreview() {
+  if (_previewInit) return;
+  _previewInit = true;
+  var hasHover = window.matchMedia('(hover: hover)').matches;
+  
+  // Desktop: hover with delay
+  document.addEventListener('mouseover', function(e) {
+    var link = e.target.closest && e.target.closest('.auto-link[data-link-id]');
+    if (!link) return;
+    if (_previewTimer) clearTimeout(_previewTimer);
+    _previewTimer = setTimeout(function() { showTermPreview(link); }, 350);
+  });
+  document.addEventListener('mouseout', function(e) {
+    var link = e.target.closest && e.target.closest('.auto-link[data-link-id]');
+    if (!link) return;
+    // Keep open if moving onto the popover itself
+    var related = e.relatedTarget;
+    if (related && related.closest && related.closest('#termPreview')) return;
+    hideTermPreview();
+  });
+  
+  // Mobile: long-press
+  if (!hasHover) {
+    document.addEventListener('touchstart', function(e) {
+      var link = e.target.closest && e.target.closest('.auto-link[data-link-id]');
+      if (!link) { hideTermPreview(); return; }
+      _previewLongPress = setTimeout(function() {
+        showTermPreview(link);
+        link._previewShown = true;
+      }, 450);
+    }, { passive: true });
+    document.addEventListener('touchend', function(e) {
+      if (_previewLongPress) { clearTimeout(_previewLongPress); _previewLongPress = null; }
+      var link = e.target.closest && e.target.closest('.auto-link[data-link-id]');
+      if (link && link._previewShown) {
+        // Long-press already shown → suppress the navigation click
+        link._previewShown = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    });
+    document.addEventListener('touchmove', function() {
+      if (_previewLongPress) { clearTimeout(_previewLongPress); _previewLongPress = null; }
+    }, { passive: true });
+    // Tap the popover to navigate
+    var pop = document.getElementById('termPreview');
+    if (pop) {
+      pop.addEventListener('click', function() {
+        var id = document.getElementById('termPreviewTitle')._linkId;
+        hideTermPreview();
+      });
+    }
+  }
+  
+  // Hide on scroll
+  document.addEventListener('scroll', hideTermPreview, { passive: true, capture: true });
+}
+
+// ===== FEATURE: IN-ARTICLE SEARCH =====
+var _articleSearchMarks = [];
+var _articleSearchCurrent = -1;
+var _articleSearchInit = false;
+
+function clearArticleSearchHighlights() {
+  var body = document.querySelector('.article-body');
+  if (body) {
+    body.querySelectorAll('mark.article-search-hit').forEach(function(m) {
+      var parent = m.parentNode;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize(); // merge adjacent text nodes
+    });
+  }
+  _articleSearchMarks = [];
+  _articleSearchCurrent = -1;
+}
+
+function highlightInArticle(query) {
+  clearArticleSearchHighlights();
+  if (!query || query.trim().length < 2) return;
+  var body = document.querySelector('.article-body');
+  if (!body) return;
+  var qNorm = normalizeText(query.trim());
+  var matchLen = qNorm.length;
+  
+  // Collect text nodes (skip those inside existing marks)
+  var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, {
+    acceptNode: function(node) {
+      if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  var textNodes = [];
+  var n;
+  while ((n = walker.nextNode())) textNodes.push(n);
+  
+  textNodes.forEach(function(node) {
+    var text = node.nodeValue;
+    var textNorm = normalizeText(text);
+    if (textNorm.indexOf(qNorm) < 0) return;
+    var frag = document.createDocumentFragment();
+    var last = 0;
+    var idx = textNorm.indexOf(qNorm, 0);
+    while (idx >= 0) {
+      if (idx > last) frag.appendChild(document.createTextNode(text.slice(last, idx)));
+      var mark = document.createElement('mark');
+      mark.className = 'article-search-hit';
+      mark.textContent = text.slice(idx, idx + matchLen);
+      frag.appendChild(mark);
+      _articleSearchMarks.push(mark);
+      last = idx + matchLen;
+      idx = textNorm.indexOf(qNorm, last);
+    }
+    if (last < text.length) frag.appendChild(document.createTextNode(text.slice(last)));
+    node.parentNode.replaceChild(frag, node);
+  });
+}
+
+function updateArticleSearchCount() {
+  var el = document.getElementById('articleSearchCount');
+  if (!el) return;
+  if (_articleSearchMarks.length === 0) {
+    el.textContent = document.getElementById('articleSearchInput').value.trim().length >= 2 ? '0' : '';
+  } else {
+    el.textContent = (_articleSearchCurrent + 1) + '/' + _articleSearchMarks.length;
+  }
+}
+
+function articleSearchStep(dir) {
+  if (_articleSearchMarks.length === 0) return;
+  if (_articleSearchCurrent >= 0 && _articleSearchMarks[_articleSearchCurrent]) {
+    _articleSearchMarks[_articleSearchCurrent].classList.remove('current');
+  }
+  _articleSearchCurrent = (_articleSearchCurrent + dir + _articleSearchMarks.length) % _articleSearchMarks.length;
+  var cur = _articleSearchMarks[_articleSearchCurrent];
+  cur.classList.add('current');
+  cur.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  updateArticleSearchCount();
+}
+
+function runArticleSearch() {
+  var input = document.getElementById('articleSearchInput');
+  if (!input) return;
+  highlightInArticle(input.value);
+  if (_articleSearchMarks.length > 0) {
+    _articleSearchCurrent = -1;
+    articleSearchStep(1); // jump to first match
+  } else {
+    updateArticleSearchCount();
+  }
+}
+
+function openArticleSearch(prefill) {
+  if (!currentArticle) return;
+  var bar = document.getElementById('articleSearchBar');
+  var input = document.getElementById('articleSearchInput');
+  if (!bar || !input) return;
+  bar.classList.add('visible');
+  bar.setAttribute('aria-hidden', 'false');
+  
+  if (!_articleSearchInit) {
+    _articleSearchInit = true;
+    input.addEventListener('input', debounce(runArticleSearch, 200));
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); articleSearchStep(e.shiftKey ? -1 : 1); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeArticleSearch(); }
+    });
+  }
+  
+  if (prefill && prefill.trim().length >= 2) {
+    input.value = prefill.trim();
+    runArticleSearch();
+  }
+  input.focus();
+  input.select();
+}
+
+function closeArticleSearch() {
+  var bar = document.getElementById('articleSearchBar');
+  if (bar) { bar.classList.remove('visible'); bar.setAttribute('aria-hidden', 'true'); }
+  clearArticleSearchHighlights();
+  var input = document.getElementById('articleSearchInput');
+  if (input) input.value = '';
+  updateArticleSearchCount();
+}
+
+function toggleArticleSearch() {
+  var bar = document.getElementById('articleSearchBar');
+  if (bar && bar.classList.contains('visible')) closeArticleSearch();
+  else openArticleSearch();
 }
 
 // ===== FEATURE: MOBILE ALPHA STRIP =====
@@ -7364,18 +7986,61 @@ function handleDoubleTap(e) {
 
 // ===== PARCOURS GUIDÉS =====
 var parcoursDefinitions = [
-  { id: 'ethique', icon: '⚖️', title: 'Éthique et morale', desc: 'Le bien, le mal, la vertu',
-    keywords: ['éthique', 'morale', 'vertu', 'devoir', 'bienfaisance', 'malveillance', 'bonheur', 'eudémonisme', 'utilitarisme', 'déontologie', 'conscience morale', 'responsabilité', 'culpabilité', 'altruisme', 'égoïsme', 'amitié', 'autrui', 'tolérance', 'compassion', 'dignité'] },
-  { id: 'connaissance', icon: '🔍', title: 'Théorie de la connaissance', desc: 'Savoir, vérité, méthode',
-    keywords: ['connaissance', 'épistémologie', 'vérité', 'empirisme', 'rationalisme', 'scepticisme', 'dogmatisme', 'criticisme', 'phénoménisme', 'apriori', 'aposteriori', 'induction', 'déduction', 'expérience', 'intuition', 'évidence', 'erreur', 'illusion', 'opinion', 'science', 'méthode'] },
-  { id: 'politique', icon: '🏛️', title: 'Philosophie politique', desc: 'État, pouvoir, justice',
+  {
+    id: 'ethique', icon: '⚖️', title: 'Éthique et morale', desc: 'Le bien, le mal, la vie bonne',
+    intro: 'Qu\u2019est-ce qu\u2019une vie bonne ? Sur quoi fonder le partage du juste et de l\u2019injuste ? Ce parcours traverse les grandes réponses morales — la vertu des Anciens, le devoir kantien, le calcul des conséquences — et les notions qui les travaillent : la liberté, la responsabilité, le rapport à autrui.',
+    anchors: ['morale', 'éthique', 'vertu', 'devoir', 'bonheur', 'bien'],
+    keywords: ['éthique', 'morale', 'vertu', 'devoir', 'bienfaisance', 'malveillance', 'bonheur', 'eudémonisme', 'utilitarisme', 'déontologie', 'conscience morale', 'responsabilité', 'culpabilité', 'altruisme', 'égoïsme', 'amitié', 'autrui', 'tolérance', 'compassion', 'dignité', 'sagesse', 'plaisir', 'ascèse'] },
+  {
+    id: 'connaissance', icon: '🔍', title: 'Théorie de la connaissance', desc: 'Savoir, vérité, méthode',
+    intro: 'Que puis-je savoir, et comment ? Ce parcours oppose les sources rivales de la connaissance — l\u2019expérience des empiristes, la raison des rationalistes — et suit les efforts pour fonder la certitude face au doute, à l\u2019erreur et à l\u2019illusion.',
+    anchors: ['connaissance', 'vérité', 'épistémologie', 'expérience', 'raison'],
+    keywords: ['connaissance', 'épistémologie', 'vérité', 'empirisme', 'rationalisme', 'scepticisme', 'dogmatisme', 'criticisme', 'phénoménisme', 'apriori', 'aposteriori', 'induction', 'déduction', 'intuition', 'évidence', 'erreur', 'illusion', 'opinion', 'croyance', 'certitude', 'doute', 'idée', 'entendement'] },
+  {
+    id: 'science', icon: '🔬', title: 'Philosophie des sciences', desc: 'Méthode, théorie, causalité',
+    intro: 'Qu\u2019est-ce qui distingue une science d\u2019une simple croyance ? Ce parcours interroge la méthode expérimentale, le statut des lois et des théories, la notion de cause, et la manière dont les savoirs se transforment au fil des révolutions scientifiques.',
+    anchors: ['science', 'méthode', 'causalité', 'expérience', 'loi'],
+    keywords: ['science', 'épistémologie', 'méthode expérimentale', 'causalité', 'déterminisme', 'hasard', 'nécessité', 'hypothèse', 'théorie', 'modèle', 'loi scientifique', 'paradigme', 'falsifiabilité', 'réfutation', 'positivisme', 'mécanisme', 'finalisme', 'probabilité', 'mesure', 'objectivité', 'réductionnisme', 'émergence'] },
+  {
+    id: 'esprit', icon: '🧠', title: 'Philosophie de l\u2019esprit', desc: 'Conscience, perception, corps',
+    intro: 'Comment la pensée se rapporte-t-elle au corps ? Qu\u2019est-ce que percevoir, sentir, avoir conscience ? Ce parcours explore le problème du rapport de l\u2019âme et du corps, la nature de la perception, l\u2019intentionnalité et les zones obscures de la vie psychique.',
+    anchors: ['conscience', 'perception', 'esprit', 'corps', 'âme'],
+    keywords: ['conscience', 'perception', 'sensation', 'esprit', 'âme', 'corps propre', 'dualisme', 'matérialisme', 'intentionnalité', 'représentation', 'imagination', 'mémoire', 'inconscient', 'affect', 'émotion', 'sentiment', 'subjectivité', 'introspection', 'phénoménologie', 'qualia', 'aperception'] },
+  {
+    id: 'existence', icon: '💭', title: 'Existence et métaphysique', desc: 'L\u2019être, le temps, la mort',
+    intro: 'Pourquoi y a-t-il quelque chose plutôt que rien ? Ce parcours aborde les questions premières de la métaphysique — l\u2019être et le néant, la substance, l\u2019identité — et les thèmes de l\u2019existence vécue : la finitude, le temps, l\u2019angoisse, le sens.',
+    anchors: ['existence', 'être', 'métaphysique', 'néant', 'temps'],
+    keywords: ['existence', 'essence', 'être', 'néant', 'ontologie', 'métaphysique', 'substance', 'accident', 'mort', 'finitude', 'durée', 'éternité', 'devenir', 'identité', 'altérité', 'transcendance', 'immanence', 'absurde', 'angoisse', 'authenticité', 'contingence', 'nécessité'] },
+  {
+    id: 'liberte', icon: '🔓', title: 'Liberté et action', desc: 'Volonté, désir, déterminisme',
+    intro: 'Sommes-nous vraiment libres, ou nos actes sont-ils déterminés ? Ce parcours met aux prises le libre arbitre et le déterminisme, interroge le rôle du désir et des passions dans l\u2019action, et la part de la volonté dans ce que nous faisons.',
+    anchors: ['liberté', 'volonté', 'désir', 'libre arbitre', 'déterminisme'],
+    keywords: ['liberté', 'libre arbitre', 'volonté', 'déterminisme', 'désir', 'passion', 'pulsion', 'motivation', 'choix', 'délibération', 'responsabilité', 'contrainte', 'aliénation', 'autonomie', 'spontanéité', 'fatalisme', 'nécessité', 'acte', 'action'] },
+  {
+    id: 'politique', icon: '🏛️', title: 'Philosophie politique', desc: 'État, pouvoir, justice',
+    intro: 'D\u2019où vient l\u2019autorité de l\u2019État, et que vaut-elle ? Ce parcours examine les théories du pouvoir et du contrat, les formes de gouvernement, l\u2019idéal de justice et les grandes idéologies modernes qui s\u2019en disputent l\u2019héritage.',
+    anchors: ['politique', 'état', 'justice', 'pouvoir', 'droit'],
     keywords: ['politique', 'état', 'souveraineté', 'pouvoir', 'autorité', 'démocratie', 'république', 'monarchie', 'tyrannie', 'aristocratie', 'contrat social', 'citoyenneté', 'loi', 'droit', 'justice', 'égalité', 'fraternité', 'révolution', 'idéologie', 'libéralisme', 'socialisme', 'anarchisme', 'totalitarisme'] },
-  { id: 'existence', icon: '💭', title: 'Existence et métaphysique', desc: 'L\'être, le temps, la mort',
-    keywords: ['existence', 'essence', 'être', 'néant', 'ontologie', 'métaphysique', 'substance', 'accident', 'mort', 'finitude', 'temps', 'durée', 'éternité', 'devenir', 'identité', 'altérité', 'phénoménologie', 'transcendance', 'immanence', 'absurde', 'angoisse', 'authenticité'] },
-  { id: 'langage', icon: '📖', title: 'Langage et logique', desc: 'Signe, sens, raisonnement',
-    keywords: ['langage', 'langue', 'parole', 'signe', 'signifiant', 'signifié', 'symbole', 'sémantique', 'sémiotique', 'syntaxe', 'logique', 'proposition', 'syllogisme', 'paralogisme', 'sophisme', 'dialectique', 'rhétorique', 'herméneutique', 'interprétation', 'concept', 'jugement', 'définition', 'sens'] },
-  { id: 'esthetique', icon: '🎭', title: 'Esthétique', desc: 'Le beau, l\'art, le sublime',
-    keywords: ['esthétique', 'art', 'beau', 'beauté', 'sublime', 'goût', 'plaisir esthétique', 'jugement de goût', 'mimésis', 'imitation', 'création artistique', 'génie', 'imagination', 'sensibilité', 'contemplation', 'œuvre', 'style', 'tragique', 'comique', 'ironie'] }
+  {
+    id: 'nature', icon: '🌿', title: 'Nature, culture et technique', desc: 'L\u2019homme, l\u2019histoire, le travail',
+    intro: 'Qu\u2019est-ce qui sépare l\u2019homme de l\u2019animal, la nature de la culture ? Ce parcours suit l\u2019anthropologie philosophique — le travail, la technique, le langage, l\u2019histoire — et la manière dont l\u2019humanité se façonne en transformant son monde.',
+    anchors: ['nature', 'culture', 'technique', 'travail', 'histoire'],
+    keywords: ['nature', 'culture', 'technique', 'travail', 'histoire', 'progrès', 'civilisation', 'humanité', 'animal', 'outil', 'artifice', 'aliénation', 'échange', 'don', 'rite', 'mythe', 'société', 'évolution', 'anthropologie'] },
+  {
+    id: 'religion', icon: '🕊️', title: 'Religion et transcendance', desc: 'Dieu, foi, sacré',
+    intro: 'Peut-on prouver ou réfuter l\u2019existence de Dieu ? Ce parcours parcourt les preuves et les critiques de la transcendance, le rapport de la foi et de la raison, le problème du mal, et l\u2019expérience du sacré.',
+    anchors: ['dieu', 'religion', 'foi', 'sacré', 'transcendance'],
+    keywords: ['dieu', 'religion', 'foi', 'sacré', 'transcendance', 'athéisme', 'théisme', 'déisme', 'théodicée', 'mal', 'providence', 'révélation', 'grâce', 'salut', 'mystique', 'éternité', 'création', 'miracle', 'sacrifice', 'croyance', 'spiritualité'] },
+  {
+    id: 'langage', icon: '📖', title: 'Langage et logique', desc: 'Signe, sens, raisonnement',
+    intro: 'Comment les mots font-ils sens ? Ce parcours articule la réflexion sur le langage — le signe, la signification, l\u2019interprétation — et les outils de la logique, du syllogisme au raisonnement valide, en passant par les pièges du sophisme.',
+    anchors: ['langage', 'signe', 'logique', 'sens', 'raisonnement'],
+    keywords: ['langage', 'langue', 'parole', 'signe', 'signifiant', 'signifié', 'symbole', 'sémantique', 'sémiotique', 'syntaxe', 'logique', 'proposition', 'syllogisme', 'paralogisme', 'sophisme', 'dialectique', 'rhétorique', 'herméneutique', 'interprétation', 'jugement', 'inférence', 'argument'] },
+  {
+    id: 'esthetique', icon: '🎭', title: 'Esthétique', desc: 'Le beau, l\u2019art, le sublime',
+    intro: 'Qu\u2019est-ce que le beau, et qu\u2019attendons-nous de l\u2019art ? Ce parcours interroge le jugement de goût, l\u2019expérience du sublime, le rôle de l\u2019imagination et du génie, et la manière dont l\u2019œuvre nous donne à sentir et à penser.',
+    anchors: ['esthétique', 'beau', 'art', 'sublime', 'goût'],
+    keywords: ['esthétique', 'art', 'beau', 'beauté', 'sublime', 'goût', 'plaisir esthétique', 'jugement de goût', 'mimésis', 'imitation', 'création artistique', 'génie', 'imagination', 'sensibilité', 'contemplation', 'œuvre', 'style', 'tragique', 'comique', 'ironie', 'catharsis'] }
 ];
 
 var activeParcoursId = lsGet('philo-active-parcours', '');
@@ -7388,6 +8053,8 @@ function getParcoursArticles(parcours) {
   var kws = parcours.keywords.map(function(k) {
     return { raw: k, norm: normalizeText(k) };
   });
+  // Anchor concepts get an ordering bonus so foundational articles lead the path
+  var anchors = (parcours.anchors || []).map(function(a) { return normalizeText(a); });
   
   all.forEach(function(e) {
     var termNorm = normalizeText(e.term);
@@ -7419,11 +8086,23 @@ function getParcoursArticles(parcours) {
       if (wordRe.test(contentNorm)) { score += 1; matchedKws.add(k.norm); }
     });
     
-    if (score >= 3) found.push({ entry: e, score: score });
+    if (score >= 3) {
+      // Anchor rank: 0 = is an anchor term itself (lead the path), higher = later
+      var anchorRank = anchors.length;
+      for (var ai = 0; ai < anchors.length; ai++) {
+        if (termNorm === anchors[ai]) { anchorRank = ai; break; }
+      }
+      found.push({ entry: e, score: score, anchorRank: anchorRank });
+    }
   });
   
-  found.sort(function(a, b) { return b.score - a.score; });
-  return found.slice(0, 12).map(function(f) { return f.entry; });
+  // Anchors first (in declared order), then by descending score, then alphabetically
+  found.sort(function(a, b) {
+    if (a.anchorRank !== b.anchorRank) return a.anchorRank - b.anchorRank;
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.entry.sortName || a.entry.term).localeCompare(b.entry.sortName || b.entry.term, 'fr');
+  });
+  return found.slice(0, 14).map(function(f) { return f.entry; });
 }
 
 function buildParcoursCards() {
@@ -7438,7 +8117,7 @@ function buildParcoursCards() {
     var prog = parcoursProgress[p.id] || [];
     var done = prog.filter(function(id) { return articles.some(function(a) { return a.id === id; }); }).length;
     var pct = Math.round(done / articles.length * 100);
-    html += '<button class="parcours-card" onclick="startParcours(' + jsAttr(p.id) + ')">' +
+    html += '<button class="parcours-card" onclick="showParcoursDetail(' + jsAttr(p.id) + ')">' +
       '<div class="parcours-icon">' + p.icon + '</div>' +
       '<div class="parcours-info"><div class="parcours-title">' + p.title + '</div>' +
       '<div class="parcours-meta">' + articles.length + ' articles · ' + p.desc + '</div></div>' +
@@ -7446,6 +8125,46 @@ function buildParcoursCards() {
   });
   html += '</div>';
   return html;
+}
+
+function showParcoursDetail(id) {
+  var parcours = parcoursDefinitions.find(function(p) { return p.id === id; });
+  if (!parcours) return;
+  var articles = getParcoursArticles(parcours);
+  if (articles.length === 0) return;
+  var prog = parcoursProgress[id] || [];
+  var doneCount = prog.filter(function(rid) { return articles.some(function(a) { return a.id === rid; }); }).length;
+  var pct = Math.round(doneCount / articles.length * 100);
+  
+  var overlay = document.createElement('div');
+  overlay.className = 'stats-overlay';
+  overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+  
+  var list = articles.map(function(a, i) {
+    var isDone = prog.indexOf(a.id) >= 0;
+    return '<div class="parcours-detail-item' + (isDone ? ' done' : '') + '" onclick="this.closest(\'.stats-overlay\').remove();navigateTo(' + jsAttr(safeId(a.id)) + ')">' +
+      '<span class="parcours-detail-num">' + (isDone ? '\u2713' : (i + 1)) + '</span>' +
+      '<span class="parcours-detail-name">' + escapeHtml(a.term) + '</span>' +
+      (a.category ? '<span class="parcours-detail-cat">' + escapeHtml(a.category.split(' \u00b7 ')[0]) + '</span>' : '') +
+      '</div>';
+  }).join('');
+  
+  var startLabel = doneCount === 0 ? 'Commencer le parcours' : (doneCount >= articles.length ? 'Revoir le parcours' : 'Reprendre');
+  
+  overlay.innerHTML = '<div class="stats-panel parcours-detail-panel">' +
+    '<div class="parcours-detail-head">' +
+      '<div class="parcours-detail-icon">' + parcours.icon + '</div>' +
+      '<div><h3 style="margin:0;">' + escapeHtml(parcours.title) + '</h3>' +
+      '<div class="parcours-detail-sub">' + articles.length + ' articles' + (doneCount > 0 ? ' · ' + pct + '% lu' : '') + '</div></div>' +
+    '</div>' +
+    '<p class="parcours-detail-intro">' + escapeHtml(parcours.intro || parcours.desc) + '</p>' +
+    '<div class="parcours-detail-list">' + list + '</div>' +
+    '<div class="parcours-detail-actions">' +
+      '<button class="btn btn-primary" onclick="this.closest(\'.stats-overlay\').remove();startParcours(' + jsAttr(id) + ')">' + startLabel + '</button>' +
+      '<button class="btn" onclick="this.closest(\'.stats-overlay\').remove()">Fermer</button>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(overlay);
 }
 
 function startParcours(id) {
