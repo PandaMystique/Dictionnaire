@@ -18,7 +18,14 @@ log "Environnement vérifié"
 log "Dépendances OK"
 
 if [ -d "android" ] && grep -rq "splashBackground" android/app/src/main/res/ 2>/dev/null; then
-  warn "Ancien projet détecté, suppression..."; rm -rf android
+  if [ "${FORCE_CLEAN_ANDROID:-0}" = "1" ]; then
+    warn "Ancien projet détecté — suppression du dossier android (FORCE_CLEAN_ANDROID=1)"
+    rm -rf android
+  else
+    warn "Ancien dossier android détecté (référence 'splashBackground')."
+    warn "Il n'est PAS supprimé automatiquement pour préserver d'éventuelles personnalisations natives."
+    warn "Pour forcer une reconstruction propre : FORCE_CLEAN_ANDROID=1 ./build.sh"
+  fi
 fi
 
 [ ! -d "android" ] && npx cap add android
@@ -145,10 +152,10 @@ WJ
 
 # Manifest modifications
 MANIFEST="android/app/src/main/AndroidManifest.xml"
-if [ -f "$MANIFEST" ] && ! grep -q "WRITE_EXTERNAL_STORAGE" "$MANIFEST"; then
-  sed -i 's|<application|<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />\n    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />\n    <application|' "$MANIFEST"
-  log "Permissions stockage ✓"
-fi
+# Note: WRITE_EXTERNAL_STORAGE / READ_EXTERNAL_STORAGE are intentionally NOT added.
+# They are obsolete on Android 11+ (scoped storage) and grant nothing useful here:
+# export/share goes through the Capacitor Filesystem (app-scoped cache) and the native
+# Share sheet, which need no broad storage permission.
 if [ -f "$MANIFEST" ] && ! grep -q "ArticleDuJourWidget" "$MANIFEST"; then
   sed -i 's|</application>|        <receiver android:name=".ArticleDuJourWidget" android:exported="true">\n            <intent-filter>\n                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />\n            </intent-filter>\n            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_info" />\n        </receiver>\n    </application>|' "$MANIFEST"
   log "Widget article du jour ✓"
@@ -163,23 +170,63 @@ cd android && ./gradlew clean 2>/dev/null && cd ..
 
 BUILD_TYPE="${1:-debug}"
 if [ "$BUILD_TYPE" = "release" ]; then
-  KEYSTORE="keystore.jks"; ALIAS="philosophie"
-  if [ ! -f "$KEYSTORE" ]; then
-    keytool -genkeypair -v -keystore "$KEYSTORE" -alias "$ALIAS" -keyalg RSA -keysize 2048 -validity 10000 -storepass philosophie2024 -keypass philosophie2024 -dname "CN=Dictionnaire de Philosophie, OU=Dev, O=Philo, L=Paris, ST=IDF, C=FR"
+  # Release signing must come from a secrets vault / CI environment, never from the repo.
+  # No keystore is generated here and no password is written to disk. Provide these
+  # environment variables (e.g. from CI secrets) before running a release build:
+  #
+  #   RELEASE_STORE_FILE      absolute path to your .jks/.keystore (kept OUTSIDE the repo)
+  #   RELEASE_STORE_PASSWORD  keystore password
+  #   RELEASE_KEY_ALIAS       key alias
+  #   RELEASE_KEY_PASSWORD    key password
+  #
+  : "${RELEASE_STORE_FILE:?RELEASE_STORE_FILE manquant — chemin du keystore hors dépôt}"
+  : "${RELEASE_STORE_PASSWORD:?RELEASE_STORE_PASSWORD manquant — à fournir via le coffre de secrets}"
+  : "${RELEASE_KEY_ALIAS:?RELEASE_KEY_ALIAS manquant}"
+  : "${RELEASE_KEY_PASSWORD:?RELEASE_KEY_PASSWORD manquant}"
+
+  if [ ! -f "$RELEASE_STORE_FILE" ]; then
+    err "Keystore introuvable: $RELEASE_STORE_FILE"
+    exit 1
   fi
-  GRADLE_PROPS="android/gradle.properties"; sed -i '/^RELEASE_/d' "$GRADLE_PROPS" 2>/dev/null || true
-  cat >> "$GRADLE_PROPS" << GRADLE
-RELEASE_STORE_FILE=../../${KEYSTORE}
-RELEASE_STORE_PASSWORD=philosophie2024
-RELEASE_KEY_ALIAS=${ALIAS}
-RELEASE_KEY_PASSWORD=philosophie2024
-GRADLE
+
+  # Inject the signing config robustly. The previous approach prepended a new
+  # `release { ... }` to buildTypes, which on a stock Capacitor build.gradle (that
+  # already contains a release block) produced TWO release blocks and an ambiguous
+  # Gradle config. This awk pass instead adds signingConfigs once after `android {`
+  # and inserts `signingConfig signingConfigs.release` INTO the existing release block.
   BUILD_GRADLE="android/app/build.gradle"
   if ! grep -q "signingConfigs" "$BUILD_GRADLE"; then
-    sed -i '/android {/a\    signingConfigs { release { storeFile file(RELEASE_STORE_FILE)\n storePassword RELEASE_STORE_PASSWORD\n keyAlias RELEASE_KEY_ALIAS\n keyPassword RELEASE_KEY_PASSWORD } }' "$BUILD_GRADLE"
-    sed -i 's/buildTypes {/buildTypes { release { signingConfig signingConfigs.release }/' "$BUILD_GRADLE"
+    awk '
+      /android[[:space:]]*\{/ && !sign {
+        print; sign=1
+        print "    signingConfigs { release {"
+        print "        storeFile file(RELEASE_STORE_FILE)"
+        print "        storePassword RELEASE_STORE_PASSWORD"
+        print "        keyAlias RELEASE_KEY_ALIAS"
+        print "        keyPassword RELEASE_KEY_PASSWORD"
+        print "    } }"
+        next
+      }
+      /buildTypes[[:space:]]*\{/ { bt=1 }
+      bt && /release[[:space:]]*\{/ && !rel {
+        print; rel=1
+        print "            signingConfig signingConfigs.release"
+        next
+      }
+      { print }
+    ' "$BUILD_GRADLE" > "$BUILD_GRADLE.tmp" && mv "$BUILD_GRADLE.tmp" "$BUILD_GRADLE"
+
+    # Fallback: if no release block existed to receive the signingConfig, create one.
+    if ! grep -q "signingConfig signingConfigs.release" "$BUILD_GRADLE"; then
+      sed -i 's/buildTypes {/buildTypes {\n        release { signingConfig signingConfigs.release }/' "$BUILD_GRADLE"
+    fi
   fi
-  cd android && ./gradlew assembleRelease; APK_PATH=$(find . -name "*release*.apk" -type f | head -1); cd ..
+  cd android && ./gradlew assembleRelease \
+      -PRELEASE_STORE_FILE="$RELEASE_STORE_FILE" \
+      -PRELEASE_STORE_PASSWORD="$RELEASE_STORE_PASSWORD" \
+      -PRELEASE_KEY_ALIAS="$RELEASE_KEY_ALIAS" \
+      -PRELEASE_KEY_PASSWORD="$RELEASE_KEY_PASSWORD"
+  APK_PATH=$(find . -name "*release*.apk" -type f | head -1); cd ..
   [ -n "$APK_PATH" ] && cp "android/$APK_PATH" "./dictionnaire-philosophie-release.apk" && log "APK release OK" || err "APK non trouvé"
 else
   cd android && ./gradlew assembleDebug; APK_PATH=$(find . -name "*debug*.apk" -type f | head -1); cd ..

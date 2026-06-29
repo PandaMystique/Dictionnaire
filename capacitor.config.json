@@ -7,7 +7,7 @@
   },
   "android": {
     "backgroundColor": "#1a1610",
-    "allowMixedContent": true,
+    "allowMixedContent": false,
     "useLegacyBridge": false
   }
 }
