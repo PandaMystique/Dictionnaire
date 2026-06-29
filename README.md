@@ -1,6 +1,6 @@
 # Dictionnaire de Philosophie
 
-Application de lecture monopage pour consulter hors ligne le *Dictionnaire de philosophie* des Wikilivres. Un seul fichier HTML (~350 Ko), aucune dépendance, aucun serveur. Interface en français, stockage entièrement local, conçue pour le bureau comme pour le mobile (avec build Android via Capacitor).
+Application de lecture monopage pour consulter hors ligne le *Dictionnaire de philosophie* des Wikilivres. Un seul fichier HTML (~385 Ko), aucune dépendance, aucun serveur. Interface en français, stockage entièrement local, conçue pour le bureau comme pour le mobile (avec build Android via Capacitor).
 
 ---
 
@@ -20,6 +20,7 @@ Application de lecture monopage pour consulter hors ligne le *Dictionnaire de ph
 - [Sécurité](#sécurité)
 - [Format des données](#format-des-données)
 - [Dépannage](#dépannage)
+- [Historique des changements](#historique-des-changements)
 - [Licence](#licence)
 
 ---
@@ -58,9 +59,13 @@ Les articles proviennent de l'API MediaWiki de `fr.wikibooks.org`, récupérés 
 
 ## Lecture
 
-**Rendu MediaWiki complet.** Titres à quatre niveaux, listes, citations, gras et italique, liens internes et externes, notes de bas de page numérotées et cliquables, bibliographie. Les modèles français courants sont développés (siècles, ordinaux, `{{citation}}`, `{{lang}}`).
+**Rendu MediaWiki complet.** Titres à quatre niveaux, listes, citations, gras et italique, liens internes et externes, notes de bas de page numérotées et cliquables, bibliographie. Les modèles français courants sont développés (siècles, ordinaux, `{{citation}}`, `{{lang}}`), de même que les modèles bibliographiques (`{{Ouvrage}}`, `{{Article}}`, `{{Chapitre}}`, `{{Lien web}}`), formatés en citations lisibles.
 
-**Notes de bas de page.** Les références `<ref>` du wikitext deviennent des exposants cliquables `[1]` `[2]` qui amènent à la note correspondante en bas de l'article. Les références nommées et réutilisées sont correctement dédupliquées.
+**Notes de bas de page bidirectionnelles.** Les références `<ref>` du wikitext deviennent des exposants cliquables `[1]` `[2]` collés à leur mot, qui amènent à la note correspondante en bas de l'article. Inversement, chaque note possède une flèche de retour `↑` qui ramène à l'endroit du texte où elle est appelée. Une source citée à plusieurs reprises n'apparaît qu'une fois, avec plusieurs liens de retour étiquetés `a`, `b`, `c`. La cible clignote brièvement à l'arrivée. Les notes appelées dans le texte et la bibliographie sont présentées dans deux blocs distincts : « Notes & références » et « Bibliographie ».
+
+**Aperçu d'un terme.** Au survol (bureau) ou à l'appui prolongé (mobile) d'un terme auto-lié, une bulle affiche son titre, sa catégorie et le début de sa définition, sans quitter la page.
+
+**Recherche dans l'article.** Un bouton loupe dans la barre de lecture, ou `Ctrl/Cmd+F`, ouvre une recherche intra-article qui surligne toutes les correspondances, affiche un compteur d'occurrences et permet de sauter de l'une à l'autre (`Entrée` / `Maj+Entrée`). La recherche est insensible à la casse et aux accents. Quand on ouvre un article depuis la recherche globale, ses occurrences sont automatiquement surlignées.
 
 **Lettrine.** Le premier caractère de l'article s'affiche en lettrine décorative (désactivable).
 
@@ -84,13 +89,19 @@ Les articles proviennent de l'API MediaWiki de `fr.wikibooks.org`, récupérés 
 
 **Auto-liens.** Les termes du dictionnaire présents dans le corps d'un article deviennent automatiquement cliquables vers leur définition.
 
+**Pied d'article.** Sous une séparation unique, un bloc cohérent regroupe la catégorie, les articles liés, la section « Cité dans » et les étiquettes personnelles.
+
 **Articles liés.** Détection automatique des articles connexes par analyse du contenu (correspondance à frontières de mots, classée par fréquence).
+
+**Cité dans (références inverses).** Chaque article liste les autres articles qui le mentionnent. L'index est obtenu en inversant les mots-clés des articles ; pour les philosophes, la correspondance se fait aussi sur le nom de famille.
 
 ---
 
 ## Navigation et recherche
 
 **Recherche floue.** Porte sur le titre, la catégorie, la définition, les tags et le contenu complet. Synonymes philosophiques pris en compte. Historique des huit dernières recherches.
+
+**Recherche dans l'article.** Indépendante de la recherche globale : surligne et fait défiler les occurrences d'un mot à l'intérieur de l'article courant (voir la section Lecture).
 
 **Index alphabétique.** Barre de lettres : sidebar au bureau, bande horizontale sur mobile. Seules les lettres ayant des articles sont actives.
 
@@ -116,11 +127,13 @@ L'accueil rassemble, de haut en bas :
 - quatre boutons rapides : Recherche, Index, Hasard, Favoris ;
 - le bandeau de mise à jour Wikilivres, le cas échéant ;
 - l'article du jour (sélection quotidienne déterministe) ;
-- six parcours thématiques guidés ;
+- onze parcours thématiques guidés ;
 - les dernières mises à jour (cinq articles les plus récemment révisés) ;
 - le bouton d'import.
 
-Les parcours thématiques sont : **Éthique et morale**, **Théorie de la connaissance**, **Philosophie politique**, **Existence et métaphysique**, **Langage et logique**, **Esthétique**. Chacun regroupe les articles pertinents par correspondance de mots-clés pondérée.
+Les onze parcours thématiques sont : **Éthique et morale**, **Théorie de la connaissance**, **Philosophie des sciences**, **Philosophie de l'esprit**, **Existence et métaphysique**, **Liberté et action**, **Philosophie politique**, **Nature, culture et technique**, **Religion et transcendance**, **Langage et logique**, **Esthétique**. Chacun regroupe les articles pertinents par correspondance de mots-clés pondérée.
+
+Cliquer sur un parcours ouvre un panneau de présentation : une introduction pédagogique qui pose la question directrice, la liste numérotée des articles (avec coches pour ceux déjà lus et indication de progression), et un bouton « Commencer le parcours » / « Reprendre » / « Revoir ». Des concepts d'ancrage placent les notions fondamentales en tête du trajet. Pendant la lecture d'un parcours, un bandeau indique la progression et permet de passer à l'article suivant.
 
 ---
 
@@ -162,8 +175,10 @@ Regroupés dans le panneau de réglages :
 
 | Touche | Action |
 |---|---|
-| `/` | Ouvrir la recherche |
-| `Échap` | Fermer le panneau actif |
+| `/` | Ouvrir la recherche globale |
+| `Ctrl/Cmd + F` | Rechercher dans l'article (en lecture) |
+| `Entrée` / `Maj + Entrée` | Occurrence suivante / précédente (recherche dans l'article) |
+| `Échap` | Fermer la recherche ou le panneau actif |
 | `←` `→` | Article précédent / suivant |
 | `R` | Article au hasard |
 | `Retour arrière` | Remonter dans l'historique |
@@ -212,7 +227,7 @@ chmod +x build.sh
 
 ## Architecture
 
-**Fichier unique.** HTML, CSS (~90 Ko) et JavaScript (~225 Ko) dans un seul fichier. Aucune dépendance, aucun bundler, aucune étape de build pour la version web. Les polices sont chargées depuis Google Fonts.
+**Fichier unique.** HTML, CSS et JavaScript dans un seul fichier (~385 Ko). Aucune dépendance, aucun bundler, aucune étape de build pour la version web. Les polices sont chargées depuis Google Fonts.
 
 **Stockage.** Les données sont conservées dans IndexedDB (base `PhiloDB`) avec repli sur localStorage. Le WebView Android peut purger localStorage à la fermeture, mais IndexedDB persiste ; au démarrage, les deux sources sont comparées et la plus complète est retenue. Toutes les écritures localStorage sont protégées par try/catch (quota).
 
@@ -230,7 +245,9 @@ Le cœur de l'application transforme le wikitext brut en HTML propre.
 
 **Références.** Extraction en trois passes pour gérer correctement les références nommées réutilisées. Une référence peut être appelée (`<ref name="x"/>`) avant d'être définie (`<ref name="x">contenu</ref>`) : les balises auto-fermantes sont d'abord protégées par des marqueurs temporaires, les définitions complètes sont ensuite extraites, puis les marqueurs sont résolus une fois toutes les définitions connues. Cela évite qu'une balise auto-fermante soit prise pour une balise ouvrante et n'absorbe le corps du texte. Les références inline sont stockées comme pseudo-balises `<x-ref>`, résolues en exposants cliquables à l'affichage, et automatiquement ignorées par les fonctions de recherche et d'indexation.
 
-**Modèles.** Les modèles français courants sont développés en texte lisible : `{{s-|XX|e}}` devient « XXᵉ siècle », `{{citation|x}}` devient « x », `{{lang|fr|x}}` devient « x ». Le modèle d'en-tête `{{DicoPhilo}}` est retiré.
+**Modèles.** Les modèles français courants sont développés en texte lisible : `{{s-|XX|e}}` devient « XXᵉ siècle », `{{citation|x}}` devient « x », `{{lang|fr|x}}` devient « x ». Le modèle d'en-tête `{{DicoPhilo}}` est retiré. Les modèles bibliographiques (`{{Ouvrage}}`, `{{Article}}`, `{{Chapitre}}`, `{{Lien web}}`) sont formatés en citations : auteur, titre en italique, lieu, éditeur, année, page. Sans cette conversion, le nettoyage générique des modèles laisserait des entrées vides.
+
+**Assemblage des notes.** À l'affichage, les appels de note sont déduplicés par leur texte : une même source citée plusieurs fois donne une seule note avec des liens de retour multiples. Les entrées de bibliographie qui ne sont jamais appelées dans le corps sont regroupées dans un bloc « Bibliographie » distinct, et celles qui répètent une note déjà présente sont écartées. Chaque appel de note reçoit un identifiant unique permettant la navigation aller-retour.
 
 **Liens.** Liens internes `[[Page|texte]]` et externes `[url texte]` convertis en texte ; les liens internes vers d'autres articles deviennent cliquables.
 
@@ -330,9 +347,58 @@ Chaque article est un objet :
 
 **Les philosophes sont mal classés.** Le classement par nom de famille a été ajouté. Pour l'appliquer aux articles déjà importés, utiliser **Re-traiter**.
 
+**Des notes vides ou en double dans la section des notes.** Corrigé. Les notes vides venaient de modèles bibliographiques non gérés, désormais formatés ; les doublons venaient du mélange entre notes et bibliographie, désormais séparés. Utiliser **Re-traiter** pour mettre à jour les articles déjà importés.
+
+**Des appels de note détachés du texte sur certaines lignes.** Corrigé (problème d'affichage purement CSS) : les exposants restent collés à leur mot. Aucune action requise, la correction s'applique au rechargement.
+
 **L'application Android se ferme au bouton retour.** Corrigé : le bouton ferme d'abord les panneaux puis remonte dans l'historique. Vérifier que le plugin `@capacitor/app` est bien installé.
 
 **Le stockage semble plein.** Toutes les écritures sont protégées. En cas de quota dépassé, exporter une sauvegarde JSON, puis vider et réimporter.
+
+---
+
+## Historique des changements
+
+Les versions sont datées ; l'application étant un fichier unique, chaque entrée correspond à un état déployé du fichier `dictionnaire-philosophie.html`.
+
+### Notes et bibliographie
+
+- **Appels de note bidirectionnels.** Chaque exposant `[n]` renvoie à sa note, et chaque note renvoie à l'endroit du texte par une flèche `↑`. Une source citée plusieurs fois est regroupée en une note unique avec des retours `a`, `b`, `c`. La cible clignote à l'arrivée.
+- **Séparation notes / bibliographie.** Les notes appelées dans le texte et la bibliographie de l'article forment désormais deux blocs distincts, ce qui supprime l'impression de doublons.
+- **Formatage des modèles bibliographiques.** `{{Ouvrage}}`, `{{Article}}`, `{{Chapitre}}` et `{{Lien web}}` sont convertis en citations lisibles. Cela corrige l'apparition de notes vides (les modèles étaient auparavant supprimés sans remplacement) et fait apparaître la bibliographie qui était invisible.
+- **Appels de note collés.** Correction d'un défaut d'affichage où les exposants pouvaient se détacher de leur mot en fin de ligne (cause : `display:inline-block` créant un point de coupure).
+
+### Lecture
+
+- **Aperçu d'un terme** au survol ou à l'appui prolongé sur un terme auto-lié.
+- **Recherche dans l'article** (`Ctrl/Cmd+F`) avec surlignage des correspondances, compteur et navigation entre occurrences ; surlignage automatique à l'ouverture depuis la recherche globale.
+- **Références inverses (« Cité dans »)** listant les articles qui mentionnent l'article courant.
+- **Pied d'article réagencé** : un seul trait de séparation, des libellés homogènes, et suppression de la rangée « Mots-clés » redondante.
+
+### Parcours thématiques
+
+- Passage de **six à onze parcours**, avec de nouveaux domaines (philosophie des sciences, de l'esprit, liberté et action, nature et culture, religion).
+- **Introductions pédagogiques** et **concepts d'ancrage** pour ordonner le trajet.
+- **Panneau de présentation** affiché avant le démarrage, avec liste des articles et progression.
+
+### Classement et import
+
+- **Classement des biographies par nom de famille** (détection automatique des articles de philosophes ; gestion des particules françaises).
+- **Outil « Re-traiter »** qui ré-analyse tous les articles depuis leur source stockée avec la dernière version du parseur, en conservant notes, favoris et surlignages.
+- **Déduplication renforcée** à l'import et au démarrage.
+
+### Parseur
+
+- **Extraction des références en trois passes** corrigeant les sections et fragments de texte qui se retrouvaient piégés dans les notes (références nommées appelées avant d'être définies).
+- **Développement des modèles français** (siècles, ordinaux, citations, langues) avec remplacement par du texte lisible.
+- **Filtrage des sections** non pertinentes pour la lecture (Voir aussi, Liens externes, etc.).
+
+### Stabilité et sécurité
+
+- **Gestionnaire d'erreurs global** affichant tout incident à l'écran, et initialisation tolérante aux pannes (chaque étape isolée).
+- Correction de deux bugs provoquant une **page blanche** (mot réservé `protected` en mode strict ; récursion infinie d'une fonction utilitaire).
+- **Durcissement XSS** : introduction de `jsAttr()` (encodage JSON puis échappement HTML) pour toute donnée injectée dans un gestionnaire `onclick`, correction de plusieurs points d'injection, assainissement systématique du contenu importé.
+- Correction d'une **fuite mémoire** (écouteur de défilement du sommaire ajouté à chaque article sans être retiré).
 
 ---
 
