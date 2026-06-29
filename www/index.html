@@ -79,10 +79,8 @@ body { color: var(--ink); font-weight: 400; line-height: 1.5; }
 [data-theme="dark"] .mobile-bookmark-btn { color: var(--ink); }
 [data-theme="dark"] .mobile-article-title { color: var(--ink); }
 [data-theme="dark"] .drawer-panel { background: var(--paper); }
-[data-theme="dark"] .drawer-panel-header { background: #12110c; color: var(--ink); }
 [data-theme="dark"] .drawer-filter-chip { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--muted); }
 [data-theme="dark"] .drawer-filter-chip.active { background: var(--accent); border-color: var(--accent); color: #1a1810; }
-[data-theme="dark"] .mobile-quick-btn { background: rgba(255,255,255,0.04); border-color: var(--border); color: var(--muted); }
 [data-theme="dark"] .import-panel { background: linear-gradient(135deg, rgba(212, 115, 74, 0.06), rgba(212, 168, 67, 0.06)); }
 [data-theme="dark"] .import-btn { background: var(--accent); color: #1a1810; border-color: var(--accent); }
 [data-theme="dark"] .import-btn:hover { background: var(--accent-light); }
@@ -258,12 +256,6 @@ body::before {
 .sidebar-section {
   padding: 1.5rem;
   border-bottom: 1px solid var(--border-light);
-}
-
-.sidebar-section-title {
-  font-size: 0.88rem;
-  color: var(--muted-light);
-  margin-bottom: 0.75rem;
 }
 
 .entry-list { list-style: none; }
@@ -1064,31 +1056,7 @@ body::before {
 }
 
 /* ===== MOBILE QUICK ACTIONS ===== */
-.mobile-quick-actions {
-  display: flex;
-  gap: 0.6rem;
-  margin-top: 1.75rem;
-  text-align: center;
-}
-
-.mobile-quick-btn {
-  flex: 1;
-  padding: 1rem 0.5rem;
-  background: var(--paper-warm);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: all 0.15s;
-}
-
 .mobile-quick-btn:active { transform: scale(0.97); background: var(--border-light); }
-.mobile-quick-btn svg { display: block; margin: 0 auto 0.4rem; }
-.mobile-quick-btn span {
-  font-size: 0.88rem;
-  color: var(--muted);
-}
-
 /* ===== MOBILE ARTICLE ENHANCEMENTS ===== */
 .mobile-reading-time {
   font-size: 0.88rem;
@@ -1894,8 +1862,6 @@ body::before {
   text-align: right;
 }
 
-.footnote-back { color: var(--accent); cursor: pointer; text-decoration: none; margin-left: 0.3rem; font-size: 0.75em; }
-
 /* ===== SEARCH SUGGESTIONS ===== */
 .search-suggestions {
   position: absolute;
@@ -1962,39 +1928,7 @@ body::before {
   flex-shrink: 0;
 }
 
-.unread-indicator { background: var(--accent); }
-
 /* ===== HISTORY & DATA PANEL ===== */
-.data-panel {
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: var(--paper-warm);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-}
-
-.data-panel h3 {
-  font-family: var(--serif);
-  font-size: 1rem;
-  font-weight: 500;
-  margin-bottom: 0.5rem;
-}
-
-.data-panel-row {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  margin-top: 0.5rem;
-}
-
-.data-panel .btn { font-size: 0.88rem; }
-
-.history-list {
-  max-height: 200px;
-  overflow-y: auto;
-  margin-top: 0.5rem;
-}
-
 /* ===== PHILOSOPHER INDEX ===== */
 .philosopher-grid {
   display: grid;
@@ -2035,8 +1969,7 @@ body::before {
   .philosopher-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .font-size-controls { margin: 0; }
   .editor-toolbar button { width: 28px; height: 28px; font-size: 0.88rem; }
-  .data-panel { padding: 0.85rem; }
-}
+  }
 /* ===== FEATURE: FOCUS MODE ===== */
 .focus-mode .header, .focus-mode .sidebar, .focus-mode .bookmark-btn,
 .focus-mode .mobile-tab-bar, .focus-mode .article-breadcrumb,
@@ -2128,14 +2061,6 @@ body::before {
 
 /* ===== FEATURE: ARTICLE TRANSITION ===== */
 /* ===== UPDATE NOTIFICATION BADGE ===== */
-.update-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; padding: 0 5px;
-  border-radius: 9px; background: var(--accent); color: var(--paper);
-  font-size: 0.88rem; font-weight: 700;
-  margin-left: 0.3rem; vertical-align: middle;
-  animation: badgePulse 2s ease-in-out infinite;
-}
 @keyframes badgePulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(139,37,0,0.3); }
   50% { box-shadow: 0 0 0 4px rgba(139,37,0,0); }
@@ -2413,10 +2338,6 @@ body::before {
   height: 100%; background: linear-gradient(90deg, var(--accent), var(--gold));
   border-radius: 3px; transition: width 0.5s ease;
 }
-.reading-progress-label {
-  font-size: 0.88rem; color: var(--muted-light); margin-top: 0.3rem; text-align: right;
-}
-
 /* ===== FEATURE: NOTES ===== */
 .article-notes {
   margin-top: 1.5rem; padding: 1rem; background: rgba(212,168,67,0.06);
@@ -2441,9 +2362,13 @@ body::before {
   border-radius: 10px; margin-top: 1.5rem; display: none;
 }
 .fiche-mode .fiche-express { display: block; }
-.fiche-express h4 { font-family: var(--serif); font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 0.75rem; }
-.fiche-express ul { padding-left: 1.2rem; }
-.fiche-express li { margin-bottom: 0.5rem; line-height: 1.6; font-size: 1rem; color: var(--ink); }
+.fiche-express h4 { font-family: var(--serif); font-size: 1.1rem; font-weight: 600; color: var(--accent); margin-bottom: 1rem; }
+.fiche-express .fiche-section { margin-bottom: 1rem; }
+.fiche-express .fiche-section:last-child { margin-bottom: 0; }
+.fiche-express .fiche-label { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-light); margin-bottom: 0.4rem; font-weight: 600; }
+.fiche-express p { margin: 0; line-height: 1.6; font-size: 0.98rem; color: var(--ink); }
+.fiche-express ul { padding-left: 1.2rem; margin: 0; }
+.fiche-express li { margin-bottom: 0.5rem; line-height: 1.6; font-size: 0.98rem; color: var(--ink); }
 .fiche-toggle {
   font-size: 0.88rem; padding: 0.3rem 0.7rem; border-radius: 4px; border: 1px solid var(--border);
   background: var(--paper-warm); color: var(--muted); cursor: pointer; transition: all 0.15s;
@@ -2576,9 +2501,6 @@ body::before {
 }
 .collection-pill:hover, .collection-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .collection-add-btn { border-style: dashed; }
-.collection-manager { margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-light); border-radius: 8px; background: var(--paper-warm); }
-.collection-manager input { width: 70%; padding: 0.3rem 0.5rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.88rem; background: var(--paper); color: var(--ink); }
-
 [data-theme="dark"] .stats-panel { background: var(--paper); }
 [data-theme="dark"] .stats-card { background: var(--paper-warm); border-color: var(--border); }
 [data-theme="dark"] .stats-close { background: var(--paper-warm); border-color: var(--border); color: var(--muted); }
@@ -2600,8 +2522,6 @@ body::before {
 [data-theme="dark"] .article-notes textarea::placeholder { color: var(--muted-light); }
 [data-theme="dark"] .collection-pill { background: var(--paper-warm); border-color: var(--border); color: var(--muted); }
 [data-theme="dark"] .collection-pill:hover, [data-theme="dark"] .collection-pill.active { background: var(--accent); color: #1a1810; }
-[data-theme="dark"] .collection-manager { background: var(--paper-warm); border-color: var(--border); }
-[data-theme="dark"] .collection-manager input { background: var(--paper); border-color: var(--border); color: var(--ink); }
 [data-theme="dark"] .fiche-toggle { background: var(--paper-warm); border-color: var(--border); color: var(--muted); }
 [data-theme="dark"] .fiche-toggle:hover, [data-theme="dark"] .fiche-toggle.active { background: var(--accent); color: #1a1810; }
 [data-theme="dark"] .share-btn { border-color: var(--border); color: var(--muted); }
@@ -3063,6 +2983,7 @@ body.has-toolbar .focus-toggle { display: none !important; }
         <button class="settings-chip" onclick="closeSettings();importJSON()">Import</button>
         <button class="settings-chip" onclick="closeSettings();generateEPUB()">EPUB</button>
         <button class="settings-chip" onclick="closeSettings();recategorizeAll()">Recatégoriser</button>
+        <button class="settings-chip" onclick="closeSettings();reprocessAllArticles()">Re-traiter</button>
       </div>
     </div>
     
@@ -3206,7 +3127,7 @@ var _entriesCacheDirty = true;
 function invalidateEntriesCache() { _entriesCache = null; _entriesCacheDirty = true; }
 function getAllEntries() {
   if (_entriesCache && !_entriesCacheDirty) return _entriesCache;
-  _entriesCache = [...dictionary, ...userEntries].sort((a, b) => a.term.localeCompare(b.term, 'fr'));
+  _entriesCache = [...dictionary, ...userEntries].sort((a, b) => (a.sortName || a.term).localeCompare(b.sortName || b.term, 'fr'));
   _entriesCacheDirty = false;
   return _entriesCache;
 }
@@ -3416,7 +3337,7 @@ function buildFilterBar() {
   if (!bar) return;
   const cats = getCategories();
   bar.innerHTML = cats.map(c => 
-    `<button class="filter-chip ${activeCategoryFilter === c ? 'active' : ''}" onclick="toggleCategoryFilter('${escapeAttr(c)}')">${escapeHtml(c)}</button>`
+    `<button class="filter-chip ${activeCategoryFilter === c ? 'active' : ''}" onclick="toggleCategoryFilter(${jsAttr(c)})">${escapeHtml(c)}</button>`
   ).join('');
 }
 
@@ -3461,20 +3382,28 @@ function autoLinkContent(html, currentId) {
 // ===== AUTO-DETECT RELATED =====
 function detectRelated(entry) {
   const allEntries = getAllEntries();
-  const contentNorm = normalizeText((entry.content + ' ' + entry.definition + ' ' + entry.tags.join(' ')));
-  const related = [];
+  // Normalize content once; word-boundary matching requires a tokenized form
+  const contentRaw = (entry.content + ' ' + entry.definition + ' ' + entry.tags.join(' '));
+  const contentNorm = ' ' + normalizeText(contentRaw).replace(/[^a-z0-9àâäéèêëîïôöùûüç-]+/gi, ' ') + ' ';
   const existingRelated = new Set(entry.related || []);
-  
+  const scored = [];
+
   for (const other of allEntries) {
     if (other.id === entry.id || existingRelated.has(other.id)) continue;
     const termNorm = normalizeText(other.term);
-    if (termNorm.length > 3 && contentNorm.includes(termNorm)) {
-      related.push(other.id);
-      if (related.length >= 8) break;
+    // Skip very short terms (false positives: "art" matches "départ", "être" matches "êtres")
+    if (termNorm.length < 5) continue;
+    // Word-boundary search: count occurrences of termNorm bracketed by non-word chars
+    const re = new RegExp('(?:^|[^a-z0-9])' + termNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:s|es)?(?:[^a-z0-9]|$)', 'g');
+    const matches = contentNorm.match(re);
+    if (matches && matches.length > 0) {
+      scored.push({ id: other.id, count: matches.length, length: termNorm.length });
     }
   }
-  
-  return related;
+
+  // Rank by frequency, then by term length (longer = more specific signal)
+  scored.sort((a, b) => b.count - a.count || b.length - a.length);
+  return scored.slice(0, 8).map(s => s.id);
 }
 
 // ===== MASS IMPORT =====
@@ -3587,14 +3516,16 @@ async function massImportFromWikibooks() {
         const wikitext = cleanWikitext(rawContent);
         if (wikitext.length > 50) {
           const parsed = parseMediaWiki(wikitext);
-          const letter = displayTitle.charAt(0).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          const sortInfo = deriveSortInfo(displayTitle, rawContent, wikiCategory);
           const defMatch = parsed.html.match(/<p>([\s\S]*?)<\/p>/);
-          const definition = defMatch ? defMatch[1].replace(/<[^>]+>/g, '').substring(0, 300) : '';
+          const definition = defMatch ? defMatch[1].replace(/<[^>]+>/g, '').trim().substring(0, 300) : '';
           
           const entry = {
             id: 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
             term: displayTitle,
-            letter: /^[A-Z]$/.test(letter) ? letter : displayTitle.charAt(0).toUpperCase(),
+            letter: sortInfo.letter,
+            sortName: sortInfo.sortName,
+            isPerson: sortInfo.isPerson,
             category: wikiCategory,
             etymology: '',
             definition,
@@ -3654,17 +3585,58 @@ async function massImportFromWikibooks() {
 
 // ===== MEDIAWIKI PARSER =====
 function parseMediaWiki(wikitext) {
-  // Extract refs
+  // Extract refs (handles <ref>, <ref name="x">, <ref name='x'>, and self-closing <ref name="x" />)
+  // Self-closing refs can appear BEFORE the matching full definition, so we must not let the
+  // greedy full-ref regex mistake a self-closing tag for an opening tag (which would swallow
+  // all the body text up to the next </ref>). Strategy:
+  //   Pass A: tokenize self-closing <ref .../> into temporary markers so they can't be matched.
+  //   Pass B: extract full <ref ...>content</ref> definitions, building the name→index map.
+  //   Pass C: replace the temporary self-closing markers with resolved <x-ref> citations.
   const refs = [];
-  let text = wikitext.replace(/<ref>([\s\S]*?)<\/ref>/g, (_, content) => {
-    refs.push(content.trim());
-    return '';
+  const namedRefs = {};       // name → index (1-based)
+  const selfClosingSlots = []; // ordinal → name (for unresolved self-closing refs)
+  let text = wikitext;
+  
+  // Pass A: protect self-closing refs (with or without name) from the full-ref regex
+  text = text.replace(/<ref\b([^>]*?)\/\s*>/g, (_, attrs) => {
+    const nameMatch = attrs.match(/name\s*=\s*["']?([^"'/\s>]+)["']?/);
+    const slot = selfClosingSlots.push(nameMatch ? nameMatch[1] : null) - 1;
+    return '\u0001SC' + slot + '\u0002';
   });
   
-  // Remove {{references}} and similar
-  text = text.replace(/\{\{references\}\}/gi, '');
+  // Pass B: extract full refs with content; the opening tag here cannot be self-closing anymore
+  text = text.replace(/<ref\b([^>]*)>([\s\S]*?)<\/ref>/g, (_, attrs, content) => {
+    const idx = refs.push(content.trim());
+    const nameMatch = attrs.match(/name\s*=\s*["']?([^"'/\s>]+)["']?/);
+    if (nameMatch) namedRefs[nameMatch[1]] = idx;
+    return '<x-ref n="' + idx + '"></x-ref>';
+  });
   
-  // Handle {{e}} → <sup>e</sup>
+  // Pass C: resolve self-closing markers now that all named refs are known
+  text = text.replace(/\u0001SC(\d+)\u0002/g, (_, n) => {
+    const name = selfClosingSlots[parseInt(n, 10)];
+    if (name && namedRefs[name]) return '<x-ref n="' + namedRefs[name] + '"></x-ref>';
+    return ''; // unnamed or unresolved self-closing ref → drop
+  });
+  
+  // Common French Wikilivres templates expanded to readable text
+  // {{s-|XX|e}} → XXᵉ siècle
+  text = text.replace(/\{\{s-?\|([IVXLCDM]+)\|e\}\}/gi, '$1<sup>e</sup>\u00a0siècle');
+  // {{1er}}, {{2e}} → 1ᵉʳ, 2ᵉ etc.
+  text = text.replace(/\{\{(\d+)er\}\}/gi, '$1<sup>er</sup>');
+  text = text.replace(/\{\{(\d+)ère?\}\}/gi, '$1<sup>re</sup>');
+  text = text.replace(/\{\{(\d+)e\}\}/gi, '$1<sup>e</sup>');
+  // {{citation|x}} → « x »
+  text = text.replace(/\{\{citation\|([^}]+)\}\}/gi, '«\u00a0$1\u00a0»');
+  // {{lang|xx|text}} → text
+  text = text.replace(/\{\{lang\|[^|}]+\|([^}]+)\}\}/gi, '$1');
+  // {{nobr|x}} / {{nowrap|x}} → x
+  text = text.replace(/\{\{(?:nobr|nowrap|no break)\|([^}]+)\}\}/gi, '$1');
+  // {{DicoPhilo|...}} — drop entirely
+  text = text.replace(/\{\{DicoPhilo[^}]*\}\}/gi, '');
+  // {{references}} → drop
+  text = text.replace(/\{\{references\}\}/gi, '');
+  // {{e}} → <sup>e</sup>
   text = text.replace(/\{\{e\}\}/g, '<sup>e</sup>');
   
   // Split into sections, extract bibliography and notes
@@ -3740,17 +3712,15 @@ function parseMediaWiki(wikitext) {
   // Convert body lines to HTML
   const html = convertWikiLinesToHtml(bodyLines);
   
-  // Build refs from <ref> tags + bibliography
+  // Build refs from <ref> tags + bibliography (BOTH, not either/or)
   const allRefs = [];
-  // From bibliography
+  // From inline refs first (these are the footnotes that appear in body)
+  for (const r of refs) {
+    allRefs.push(convertInlineWiki(r));
+  }
+  // Then bibliography entries
   for (const bib of bibLines) {
     allRefs.push(convertInlineWiki(bib));
-  }
-  // From inline refs (if no bibliography provided, use these)
-  if (allRefs.length === 0) {
-    for (const r of refs) {
-      allRefs.push(convertInlineWiki(r));
-    }
   }
   
   return { html: sanitizeHtml(html), refs: allRefs.map(function(r) { return sanitizeHtml(r); }) };
@@ -3858,17 +3828,26 @@ function convertInlineWiki(text) {
   text = text.replace(/'''(.+?)'''/g, '<strong>$1</strong>');
   // Italic: ''text'' → <em>
   text = text.replace(/''(.+?)''/g, '<em>$1</em>');
-  // {{e}} remnants
+  // Centuries and ordinals
+  text = text.replace(/\{\{s-?\|([IVXLCDM]+)\|e\}\}/gi, '$1<sup>e</sup>\u00a0siècle');
+  text = text.replace(/\{\{(\d+)er\}\}/gi, '$1<sup>er</sup>');
+  text = text.replace(/\{\{(\d+)ère?\}\}/gi, '$1<sup>re</sup>');
+  text = text.replace(/\{\{(\d+)e\}\}/gi, '$1<sup>e</sup>');
+  // {{citation|x}} → « x »
+  text = text.replace(/\{\{citation\|([^}]+)\}\}/gi, '«\u00a0$1\u00a0»');
+  // {{lang|xx|text}} → text
+  text = text.replace(/\{\{lang\|[^|}]+\|([^}]+)\}\}/gi, '$1');
+  // {{nobr|x}} / {{nowrap|x}} → x
+  text = text.replace(/\{\{(?:nobr|nowrap|no break)\|([^}]+)\}\}/gi, '$1');
+  // {{e}} → <sup>e</sup>
   text = text.replace(/\{\{e\}\}/g, '<sup>e</sup>');
-  // Remove remaining {{ }}
-  text = text.replace(/\{\{.*?\}\}/g, '');
+  // Strip any remaining {{ }} templates (defensive)
+  text = text.replace(/\{\{[^{}]*\}\}/g, '');
   // External links: [url text]
   text = text.replace(/\[https?:\/\/\S+\s+(.+?)\]/g, '$1');
   // Internal wikilinks: [[Page|text]] or [[Page]]
   text = text.replace(/\[\[([^|\]]+)\|([^\]]+)\]\]/g, '$2');
   text = text.replace(/\[\[([^\]]+)\]\]/g, '$1');
-  // Keep <br/> <br> <sup> <sub> <em> <strong>
-  // Strip other HTML-like tags except safe ones
   return text;
 }
 
@@ -3881,7 +3860,7 @@ function openEditor(entryId) {
   if (isMobile()) {
     closeDrawer();
     document.getElementById('mobileArticleBar').style.display = 'none';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    clearTabActive();
     document.querySelector('[data-tab="editor"]')?.classList.add('active');
   }
   
@@ -4030,6 +4009,9 @@ Paragraphe de texte avec ''italique'' et '''gras'''.
 
 function escapeAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+// Safe to inject inside a JavaScript single-quoted string that's itself inside an HTML attribute.
+// Encodes the value as a JSON string then HTML-escapes the result, so it survives both parsers.
+function jsAttr(s) { return escapeAttr(JSON.stringify(String(s))); }
 
 function getReadTime(entry) {
   if (!entry || !entry.content) return 1;
@@ -4348,24 +4330,117 @@ function extractWikiCategory(rawWikitext) {
   return cats.join(' · ') || '';
 }
 
+// Particles that belong with the surname (kept lowercase in French names)
+var NAME_PARTICLES = ['de', 'la', 'le', 'du', 'des', 'von', 'van', 'der', 'den', 'dos', 'da', 'di', 'del', 'della', 'ben', 'al', "d'", "l'"];
+
+// Determine if an article is a biography of a person and, if so, the surname to sort by.
+// Returns { isPerson, sortName, letter }. For non-persons, sortName = term.
+function deriveSortInfo(term, rawWikitext, category) {
+  var cat = (category || '');
+  var raw = (rawWikitext || '');
+  // Signal 1: category is "Philosophe" (or Logicien, Sociologue, etc. — single-word -logue/-phe person categories)
+  var catIsPerson = /^(philosophe|logicien|sociologue|psychologue|psychanalyste|économiste|historien|théologien|mathématicien|écrivain|essayiste|anthropologue|linguiste|épistémologue)s?$/i.test(cat.trim());
+  // Signal 2: intro says "est un/une philosophe/penseur/..." 
+  var introIsPerson = /'''[^']+'''\s*,[^.]*\b(?:est|était|fut)\b[^.]*\bun[e]?\b[^.]*\b(philosophe|penseur|penseuse|logicien|sociologue|psychanalyste|théologien|écrivain|essayiste|moraliste|métaphysicien)\b/i.test(raw)
+    || /'''[^']+'''\s*\([^)]*\d{3,4}[^)]*\)\s*,?\s*(?:est|était|fut)\b/i.test(raw); // bold name followed by (dates)
+  // Signal 3: bold title with birth/death dates pattern "né(e) ... le ... date"
+  var hasBirthDeath = /\bné[e]?\b.*\b(?:à|le)\b.*\d{4}/i.test(raw.substring(0, 600));
+  
+  var isPerson = catIsPerson || introIsPerson || hasBirthDeath;
+  
+  if (!isPerson) {
+    return { isPerson: false, sortName: term, letter: firstLetterOf(term) };
+  }
+  
+  // Extract surname: take the last "word group", attaching preceding particles.
+  // "Maurice Merleau-Ponty" → "Merleau-Ponty"
+  // "Jean-Paul Sartre" → "Sartre"
+  // "Jean-Jacques Rousseau" → "Rousseau"
+  // "Simone de Beauvoir" → "de Beauvoir" → sort under B
+  // "Thomas d'Aquin" → "d'Aquin" → sort under A
+  var words = term.trim().split(/\s+/);
+  if (words.length < 2) {
+    // Single-word name (e.g. "Platon", "Aristote", "Voltaire") — sort as-is
+    return { isPerson: true, sortName: term, letter: firstLetterOf(term) };
+  }
+  // Find surname start: last word, plus any immediately preceding particles
+  var surnameStart = words.length - 1;
+  while (surnameStart > 1 && NAME_PARTICLES.indexOf(words[surnameStart - 1].toLowerCase()) >= 0) {
+    surnameStart--;
+  }
+  var surnameWords = words.slice(surnameStart);
+  var sortName = surnameWords.join(' ');
+  // If surname begins with an apostrophe-particle (d'Aquin), strip it for sorting
+  sortName = sortName.replace(/^(d['’]|l['’])/i, '');
+  // The letter for grouping: first letter of the FIRST non-particle word of the surname
+  var letterSource = surnameWords[0];
+  if (NAME_PARTICLES.indexOf(letterSource.toLowerCase()) >= 0 && surnameWords.length > 1) {
+    letterSource = surnameWords[1];
+  }
+  return { isPerson: true, sortName: sortName, letter: firstLetterOf(letterSource) };
+}
+
+function firstLetterOf(s) {
+  if (!s) return '#';
+  // Strip leading apostrophe-particles (d', l', d', etc.) for letter grouping
+  var cleaned = s.replace(/^(d['’]|l['’])/i, '');
+  if (!cleaned) cleaned = s;
+  var c = cleaned.charAt(0).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return /^[A-Z]$/.test(c) ? c : cleaned.charAt(0).toUpperCase();
+}
+
 function guessTags(wikitext) {
-  // Extract philosopher names (bold proper nouns in text)
-  const boldNames = [];
-  const boldRegex = /'''([A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]+(?: [A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]+){0,3})'''/g;
+  // Expanded list of philosophers commonly cited in Wikilivres articles
+  const knownPhilosophers = [
+    'Aristote', 'Platon', 'Socrate', 'Épicure', 'Lucrèce', 'Cicéron', 'Sénèque', 'Marc Aurèle', 'Plotin',
+    'Augustin', 'Thomas d\'Aquin', 'Anselme', 'Avicenne', 'Averroès', 'Maïmonide', 'Abélard',
+    'Machiavel', 'Montaigne', 'Bacon', 'Hobbes', 'Descartes', 'Pascal', 'Spinoza', 'Malebranche', 'Leibniz',
+    'Locke', 'Hume', 'Berkeley', 'Rousseau', 'Voltaire', 'Diderot', 'Condillac', 'Montesquieu',
+    'Kant', 'Fichte', 'Schelling', 'Hegel', 'Schopenhauer', 'Feuerbach', 'Comte', 'Mill', 'Bentham',
+    'Kierkegaard', 'Marx', 'Engels', 'Nietzsche', 'Bergson', 'Husserl', 'Freud', 'Russell', 'Frege',
+    'Wittgenstein', 'Heidegger', 'Sartre', 'Beauvoir', 'Camus', 'Merleau-Ponty', 'Lévinas',
+    'Arendt', 'Adorno', 'Horkheimer', 'Benjamin', 'Habermas', 'Marcuse', 'Bloch',
+    'Bachelard', 'Canguilhem', 'Foucault', 'Derrida', 'Deleuze', 'Lyotard', 'Ricœur', 'Lacan',
+    'Bourdieu', 'Lévi-Strauss', 'Althusser', 'Badiou', 'Rancière', 'Žižek',
+    'Popper', 'Kuhn', 'Quine', 'Putnam', 'Rawls', 'Nozick', 'Dworkin', 'Rorty', 'Searle', 'Davidson',
+    'Carnap', 'Tarski', 'Gödel', 'Saussure', 'Chomsky'
+  ];
+  
+  // Normalize text once for word-boundary matching
+  const norm = normalizeText(wikitext);
+  // Wrap in delimiters and replace any non-letter run by a single space to enforce word boundaries
+  const haystack = ' ' + norm.replace(/[^a-z0-9àâäéèêëîïôöùûüç-]+/gi, ' ') + ' ';
+  
+  // Bold-name capture in original wikitext (likely a proper noun)
+  const boldNames = new Set();
+  const boldRegex = /'''([A-ZÀ-ÖØ-Þ][a-zà-öø-ÿ]+(?:[- ][A-ZÀ-ÖØ-Þ]?[a-zà-öø-ÿ]+){0,2})'''/g;
   let m;
   while ((m = boldRegex.exec(wikitext)) !== null) {
-    boldNames.push(m[1]);
+    const candidate = m[1].trim();
+    // Filter out common non-philosopher bolded phrases (e.g. titles starting with article)
+    if (!/^(Le |La |Les |L'|Un |Une |De |Du |Des |Dans |Ce |Cette |Ces )/i.test(candidate)) {
+      boldNames.add(candidate);
+    }
   }
   
-  // Also look for common philosopher names mentioned
-  const knownPhilosophers = ['Aristote', 'Platon', 'Socrate', 'Descartes', 'Kant', 'Hegel', 'Nietzsche', 'Heidegger', 'Spinoza', 'Leibniz', 'Hume', 'Locke', 'Marx', 'Sartre', 'Husserl', 'Wittgenstein', 'Bergson', 'Kierkegaard', 'Schopenhauer', 'Épicure', 'Thomas d\'Aquin', 'Augustin', 'Montaigne', 'Pascal', 'Rousseau', 'Hobbes', 'Levinas', 'Derrida', 'Foucault', 'Deleuze', 'Merleau-Ponty', 'Russell', 'Frege', 'Quine', 'Popper', 'Kuhn'];
-  
-  const found = new Set(boldNames);
+  // Match known philosophers by word boundary
+  const found = new Map(); // canonicalName → displayName
   for (const name of knownPhilosophers) {
-    if (wikitext.includes(name)) found.add(name);
+    const nameNorm = normalizeText(name);
+    const re = new RegExp('(?:^|[^a-z0-9])' + nameNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-z0-9]|$)', 'i');
+    if (re.test(haystack)) {
+      // Use normalized form as key to dedupe accent variants (Lévinas / Levinas)
+      found.set(nameNorm, name);
+    }
   }
   
-  return [...found].slice(0, 8).join(', ');
+  // Add bold names that aren't already detected
+  for (const bn of boldNames) {
+    const bnNorm = normalizeText(bn);
+    if (!found.has(bnNorm)) found.set(bnNorm, bn);
+  }
+  
+  return [...found.values()].slice(0, 10).join(', ');
 }
 
 function showEditorTab(tab, btn) {
@@ -4415,17 +4490,19 @@ function saveEntry() {
   
   const parsed = parseMediaWiki(wikitext);
   const tags = tagsRaw ? tagsRaw.split(',').map(t => t.trim()).filter(Boolean) : [];
-  const letter = title.charAt(0).toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const sortInfo = deriveSortInfo(title, wikitext, category);
   const id = editingEntryId || 'user-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6);
   
   // Extract first paragraph as definition
   const defMatch = parsed.html.match(/<p>([\s\S]*?)<\/p>/);
-  const definition = defMatch ? defMatch[1].replace(/<[^>]+>/g, '').substring(0, 300) : '';
+  const definition = defMatch ? defMatch[1].replace(/<[^>]+>/g, '').replace(/<x-ref[^>]*><\/x-ref>/g, '').substring(0, 300) : '';
   
   const entry = {
     id,
     term: title,
-    letter: letter.length === 1 && /[A-Z]/.test(letter) ? letter : title.charAt(0).toUpperCase(),
+    letter: sortInfo.letter,
+    sortName: sortInfo.sortName,
+    isPerson: sortInfo.isPerson,
     category,
     etymology,
     definition,
@@ -4506,29 +4583,40 @@ function applyFontSize() {
 
 // ===== FOOTNOTES =====
 function buildFootnotes(html, refs) {
-  // Convert <ref>...</ref> markers into numbered superscripts
-  let noteIndex = 0;
-  const notes = [];
+  // Inline refs are stored as [REF:N] placeholders that point into refs[N-1].
+  // Resolve them to clickable superscripts.
+  const usedRefs = new Map(); // refIndex (1-based) → footnote position (1-based)
+  let footPos = 0;
   
-  // Extract inline refs from HTML
-  html = html.replace(/<ref[^>]*>([\s\S]*?)<\/ref>/gi, (match, content) => {
-    noteIndex++;
-    notes.push(content.replace(/<[^>]+>/g, '').trim());
-    return `<span class="footnote-ref" onclick="document.getElementById('fn-${noteIndex}').scrollIntoView({behavior:'smooth',block:'center'})" title="${escapeAttr(notes[notes.length-1].substring(0,100))}">[${noteIndex}]</span>`;
+  html = html.replace(/<x-ref n="(\d+)"><\/x-ref>/g, (m, n) => {
+    const refIdx = parseInt(n, 10);
+    if (refIdx < 1 || refIdx > refs.length) return ''; // dangling
+    let pos = usedRefs.get(refIdx);
+    if (!pos) {
+      footPos++;
+      pos = footPos;
+      usedRefs.set(refIdx, pos);
+    }
+    const refText = refs[refIdx - 1] || '';
+    return '<span class="footnote-ref" onclick="document.getElementById(\'fn-' + pos + '\').scrollIntoView({behavior:\'smooth\',block:\'center\'})" title="' + escapeAttr(refText.replace(/<[^>]+>/g, '').substring(0, 100)) + '">[' + pos + ']</span>';
   });
   
-  // Add refs from parsed bibliography as additional notes
-  refs.forEach(r => {
-    noteIndex++;
-    notes.push(r);
+  // Build the notes array in citation order
+  const orderedRefs = [];
+  usedRefs.forEach((pos, refIdx) => { orderedRefs[pos - 1] = refs[refIdx - 1]; });
+  
+  // Add bibliography entries (refs not cited inline) as additional notes
+  const cited = new Set(usedRefs.keys());
+  refs.forEach((r, i) => {
+    if (!cited.has(i + 1)) orderedRefs.push(r);
   });
   
   // Build footnotes section
   let footnotesHtml = '';
-  if (notes.length > 0) {
-    footnotesHtml = `<div class="footnotes-section"><h4>Notes & Références (${notes.length})</h4>` +
-      notes.map((n, i) => `<div class="footnote-item" id="fn-${i+1}"><span class="footnote-num">${i+1}.</span><span>${n}</span></div>`).join('') +
-      `</div>`;
+  if (orderedRefs.length > 0) {
+    footnotesHtml = '<div class="footnotes-section"><h4>Notes &amp; références (' + orderedRefs.length + ')</h4>' +
+      orderedRefs.map((n, i) => '<div class="footnote-item" id="fn-' + (i + 1) + '"><span class="footnote-num">' + (i + 1) + '.</span><span>' + n + '</span></div>').join('') +
+      '</div>';
   }
   
   return { html, footnotesHtml };
@@ -4548,7 +4636,7 @@ function buildTOC(contentEl) {
     for (var i = 0; i < headings.length; i++) {
       var h = headings[i];
       var isSub = h.tagName === 'H4';
-      links.push('<a href="#section-' + i + '" class="' + (isSub ? 'toc-sub' : '') + '" onclick="event.preventDefault();document.getElementById(\'section-' + i + '\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + h.textContent + '</a>');
+      links.push('<a href="#section-' + i + '" class="' + (isSub ? 'toc-sub' : '') + '" onclick="event.preventDefault();document.getElementById(\'section-' + i + '\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + escapeHtml(h.textContent) + '</a>');
     }
     tocBtn.innerHTML = '<button class="toc-mobile-toggle" onclick="this.nextElementSibling.classList.toggle(\'open\')">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h12"/></svg>' +
@@ -4563,7 +4651,7 @@ function buildTOC(contentEl) {
     for (var i = 0; i < headings.length; i++) {
       var h = headings[i];
       var isSub = h.tagName === 'H4';
-      links.push('<a href="#section-' + i + '" data-idx="' + i + '" class="' + (isSub ? 'toc-sub' : '') + '" onclick="event.preventDefault();document.getElementById(\'section-' + i + '\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + h.textContent + '</a>');
+      links.push('<a href="#section-' + i + '" data-idx="' + i + '" class="' + (isSub ? 'toc-sub' : '') + '" onclick="event.preventDefault();document.getElementById(\'section-' + i + '\').scrollIntoView({behavior:\'smooth\',block:\'start\'})">' + escapeHtml(h.textContent) + '</a>');
     }
     toc.innerHTML = '<div class="toc-float-title">Sommaire</div>' + links.join('') +
       '<div style="margin-top:0.75rem;padding-top:0.6rem;border-top:1px solid var(--border);">' +
@@ -4578,6 +4666,11 @@ function buildTOC(contentEl) {
     
     // Scroll spy
     var content = document.querySelector('.content');
+    var spyTarget = content || window;
+    // Remove previous spy if any (memory leak fix)
+    if (window._tocSpy && window._tocSpyTarget) {
+      try { window._tocSpyTarget.removeEventListener('scroll', window._tocSpy); } catch(e) {}
+    }
     var spy = function() {
       var tocLinks = toc.querySelectorAll('a[data-idx]');
       var active = 0;
@@ -4589,7 +4682,9 @@ function buildTOC(contentEl) {
         else tocLinks[j].classList.remove('active');
       }
     };
-    (content || window).addEventListener('scroll', spy, { passive: true });
+    window._tocSpy = spy;
+    window._tocSpyTarget = spyTarget;
+    spyTarget.addEventListener('scroll', spy, { passive: true });
     spy();
   }
 }
@@ -4610,11 +4705,30 @@ function showSearchHistory() {
   if (searchHistory.length === 0) { box.classList.remove('visible'); return; }
   box.innerHTML = '<div style="font-size:0.88rem;color:var(--muted-light);padding:0.5rem 0.7rem 0.25rem;">Recherches récentes</div>' +
     searchHistory.map(function(t, i) {
-      return '<div class="search-suggestion' + (i === suggestHighlight ? ' highlighted' : '') + '" onmousedown="document.getElementById(\'searchInput\').value=\'' + escapeAttr(t) + '\';searchQuery=\'' + escapeAttr(t) + '\';renderEntryList();showSearchSuggestions(\'' + escapeAttr(t) + '\')" data-idx="' + i + '">' +
+      return '<div class="search-suggestion' + (i === suggestHighlight ? ' highlighted' : '') + '" data-history-term="' + escapeAttr(t) + '" data-idx="' + i + '">' +
         '<div class="search-suggestion-letter"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>' +
         '<div class="search-suggestion-text"><div class="search-suggestion-title">' + escapeHtml(t) + '</div></div></div>';
     }).join('') +
-    '<div class="search-suggestion" onmousedown="searchHistory=[];lsSet(\'philo-search-history\',\'[]\');document.getElementById(\'searchSuggestions\').classList.remove(\'visible\')" style="justify-content:center;font-size:0.88rem;color:var(--muted-light);">Effacer l\'historique</div>';
+    '<div class="search-suggestion" data-clear-history="1" style="justify-content:center;font-size:0.88rem;color:var(--muted-light);">Effacer l\'historique</div>';
+  // Event delegation (avoids XSS via inline onclick string interpolation)
+  box.onmousedown = function(ev) {
+    var item = ev.target.closest('[data-history-term],[data-clear-history]');
+    if (!item) return;
+    if (item.dataset.clearHistory) {
+      searchHistory = [];
+      lsSet('philo-search-history', '[]');
+      box.classList.remove('visible');
+      return;
+    }
+    var term = item.dataset.historyTerm;
+    if (term) {
+      var input = document.getElementById('searchInput');
+      if (input) input.value = term;
+      searchQuery = term;
+      renderEntryList();
+      showSearchSuggestions(term);
+    }
+  };
   box.classList.add('visible');
 }
 
@@ -4677,7 +4791,7 @@ function showPhilosopherIndex() {
       </header>
       <div class="philosopher-grid">
         ${sorted.map(([name, ids]) => `
-          <div class="philosopher-card" onclick="searchPhilosopher('${escapeAttr(name)}')">
+          <div class="philosopher-card" onclick="searchPhilosopher(${jsAttr(name)})">
             <div class="philosopher-card-name">${name}</div>
             <div class="philosopher-card-count">${ids.length} article${ids.length > 1 ? 's' : ''}</div>
           </div>`).join('')}
@@ -4729,7 +4843,9 @@ function importJSON() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(ev.target.result);
+        let data;
+        try { data = JSON.parse(ev.target.result); }
+        catch(parseErr) { alert('Fichier invalide: JSON malformé'); return; }
         if (!data.entries || !Array.isArray(data.entries)) {
           alert('Format invalide.');
           return;
@@ -4801,6 +4917,61 @@ function recategorizeAll() {
     showWelcome();
   } else {
     alert('Aucun changement.');
+  }
+}
+
+// ===== RE-PROCESS ARTICLES (re-parse stored wikitext with current parser) =====
+function reprocessAllArticles() {
+  var withRaw = userEntries.filter(function(e) { return e._wikiRaw || e._wikiSource; });
+  var total = userEntries.length;
+  if (withRaw.length === 0) {
+    alert('Aucun article ne contient de source Wikilivres stockée. Ré-importez les articles pour appliquer les corrections.');
+    return;
+  }
+  var msg = 'Re-traiter ' + withRaw.length + ' article' + (withRaw.length > 1 ? 's' : '') + ' depuis leur source Wikilivres ?\n\n';
+  msg += 'Cela applique les dernières corrections du parseur (notes de bas de page, modèles, sections). Vos notes, favoris et surlignages sont conservés.';
+  if (withRaw.length < total) {
+    msg += '\n\n' + (total - withRaw.length) + ' article' + (total - withRaw.length > 1 ? 's' : '') + ' sans source ne ser' + (total - withRaw.length > 1 ? 'ont' : 'a') + ' pas modifié' + (total - withRaw.length > 1 ? 's' : '') + '.';
+  }
+  if (!confirm(msg)) return;
+  
+  var count = 0;
+  userEntries.forEach(function(e) {
+    // Prefer the raw wikitext (with category markup); fall back to cleaned source
+    var source = e._wikiRaw || e._wikiSource;
+    if (!source) return;
+    try {
+      var cleaned = cleanWikitext(source);
+      var parsed = parseMediaWiki(cleaned);
+      // Re-derive definition (first paragraph, stripped)
+      var firstPara = parsed.html.match(/<p>([\s\S]*?)<\/p>/);
+      var def = firstPara ? firstPara[1].replace(/<[^>]+>/g, '').trim() : (e.definition || '');
+      e.content = parsed.html;
+      e.refs = parsed.refs;
+      if (def) e.definition = def;
+      // Refresh category and tags from the raw source
+      e.category = extractWikiCategory(source);
+      e.tags = guessTags(source).split(', ').filter(Boolean);
+      // Recompute surname-based sort key and letter
+      var sortInfo = deriveSortInfo(e.term, source, e.category);
+      e.letter = sortInfo.letter;
+      e.sortName = sortInfo.sortName;
+      e.isPerson = sortInfo.isPerson;
+      // Invalidate cached read time
+      delete e._readTime;
+      count++;
+    } catch (err) {
+      console.warn('[Reprocess] failed for', e.term, err);
+    }
+  });
+  
+  if (count > 0) {
+    invalidateEntriesCache();
+    saveUserEntries();
+    alert(count + ' article' + (count > 1 ? 's' : '') + ' re-traité' + (count > 1 ? 's' : '') + ' avec succès.');
+    showWelcome();
+  } else {
+    alert('Aucun article n\'a pu être re-traité.');
   }
 }
 
@@ -5013,15 +5184,27 @@ function deduplicateEntries() {
 }
 
 function init() {
-  deduplicateEntries();
-  initTheme();
-  applyAppearance();
+  // Global error reporting (visible) so the user can see crashes
+  window.addEventListener('error', function(ev) {
+    var content = document.getElementById('content');
+    if (content && !content.innerHTML.trim()) {
+      content.innerHTML = '<div style="padding:2rem;max-width:600px;margin:0 auto;color:#222;background:#fff;">' +
+        '<h2 style="color:#a02;">Erreur JavaScript</h2>' +
+        '<p><b>Message :</b> ' + (ev.message || '(inconnu)') + '</p>' +
+        '<p><b>Fichier :</b> ' + (ev.filename || '') + ' ligne ' + (ev.lineno || '?') + '</p>' +
+        '<pre style="background:#f5f5f5;padding:1rem;border-radius:8px;overflow:auto;font-size:0.85rem;">' +
+        ((ev.error && ev.error.stack) || '(pas de pile)') + '</pre></div>';
+    }
+  });
+  try { deduplicateEntries(); } catch(e) { console.warn('dedup:', e); }
+  try { initTheme(); } catch(e) { console.warn('initTheme:', e); }
+  try { applyAppearance(); } catch(e) { console.warn('applyAppearance:', e); }
   if (highlightMode) document.body.classList.add('highlight-mode');
-  updateEntryCount();
-  buildAlphaNav();
-  buildFilterBar();
-  buildMobileAlphaStrip();
-  renderEntryList();
+  try { updateEntryCount(); } catch(e) { console.warn('updateEntryCount:', e); }
+  try { buildAlphaNav(); } catch(e) { console.warn('buildAlphaNav:', e); }
+  try { buildFilterBar(); } catch(e) { console.warn('buildFilterBar:', e); }
+  try { buildMobileAlphaStrip(); } catch(e) { console.warn('buildMobileAlphaStrip:', e); }
+  try { renderEntryList(); } catch(e) { console.warn('renderEntryList:', e); }
   showWelcome();
   
   // Stop reading timer when page hidden
@@ -5262,7 +5445,7 @@ function init() {
     const titleEl = document.querySelector('.article-title');
     if (titleEl) {
       const rect = titleEl.getBoundingClientRect();
-      document.getElementById('mobileArticleTitle').classList.toggle('visible', rect.bottom < 60);
+      document.getElementById('mobileArticleTitle')?.classList.toggle('visible', rect.bottom < 60);
     }
     // Reading progress
     const article = document.querySelector('.article');
@@ -5373,12 +5556,12 @@ function renderEntryList() {
   
   // Apply sort
   if (sortMode === 'category') {
-    entries.sort(function(a,b) { return (a.category||'').localeCompare(b.category||'') || a.term.localeCompare(b.term); });
+    entries.sort(function(a,b) { return (a.category||'').localeCompare(b.category||'') || (a.sortName||a.term).localeCompare(b.sortName||b.term); });
   } else if (sortMode === 'unread') {
     entries.sort(function(a,b) {
       var aR = readArticles.has(a.id) ? 1 : 0;
       var bR = readArticles.has(b.id) ? 1 : 0;
-      return aR - bR || a.term.localeCompare(b.term);
+      return aR - bR || (a.sortName||a.term).localeCompare(b.sortName||b.term);
     });
   } else if (sortMode === 'recent') {
     var timeMap = {};
@@ -5508,7 +5691,7 @@ function showArticle(id) {
     }
   }
   
-  let tagsHtml = entry.tags.map(t => `<span class="article-tag" onclick="searchTag('${escapeAttr(t)}')">${escapeHtml(t)}</span>`).join('');
+  let tagsHtml = entry.tags.map(t => `<span class="article-tag" onclick="searchTag(${jsAttr(t)})">${escapeHtml(t)}</span>`).join('');
   let customTagsHtml = buildCustomTagsHtml(id);
   
   const wikiUrl = `https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie/${encodeURIComponent(entry.term.replace(/ & /g, '/').replace(/ \(logique\)/, '_(logique)'))}`;
@@ -5537,7 +5720,7 @@ function showArticle(id) {
   var breadcrumbHtml = '<div class="article-breadcrumb">'
     + '<a onclick="showWelcome()">Accueil</a>'
     + '<span class="bc-sep">\u203a</span>'
-    + (entry.category ? '<a onclick="searchTag(\'' + escapeAttr(entry.category) + '\')">' + escapeHtml(entry.category) + '</a>' : '')
+    + (entry.category ? '<a onclick="searchTag(' + jsAttr(entry.category) + ')">' + escapeHtml(entry.category) + '</a>' : '')
     + '<span class="bc-sep">\u203a</span>'
     + '<span class="bc-current">' + escapeHtml(entry.term) + '</span>'
     + '</div>';
@@ -5673,7 +5856,7 @@ function showArticle(id) {
     mobileViewingArticle = true;
     document.getElementById('mobileArticleBar').style.display = 'flex';
     document.getElementById('mobileArticleTitle').textContent = entry.term;
-    document.getElementById('mobileArticleTitle').classList.remove('visible');
+    document.getElementById('mobileArticleTitle')?.classList.remove('visible');
     document.getElementById('mobileReadingProgress').style.display = 'block';
     document.getElementById('mobileReadingFill').style.width = '0%';
     document.getElementById('mobileFab')?.classList.add('hidden');
@@ -5681,14 +5864,14 @@ function showArticle(id) {
     var strip = document.getElementById('mobileAlphaStrip');
     if (strip) strip.style.display = 'none';
     updateMobileBookmarkBtn();
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    clearTabActive();
     window.scrollTo({ top: 0, behavior: 'instant' });
     // Restore saved scroll position if any
     if (articleScrollPos[id]) {
       restoreScrollPos(id);
     }
   } else {
-    document.getElementById('sidebar').classList.remove('mobile-open');
+    document.getElementById('sidebar')?.classList.remove('mobile-open');
     content.scrollTop = 0;
     // Restore saved scroll position if any
     if (articleScrollPos[id]) {
@@ -5725,6 +5908,24 @@ function searchTag(tag) {
 
 // ===== WELCOME SCREEN =====
 function showWelcome() {
+  try { _showWelcomeImpl(); }
+  catch(err) {
+    console.error('[showWelcome] crashed:', err);
+    var content = document.getElementById('content');
+    if (content) {
+      content.innerHTML = '<div style="padding:2rem;max-width:600px;margin:0 auto;">' +
+        '<h2 style="color:var(--accent);">Erreur d\u2019affichage</h2>' +
+        '<p>La page d\u2019accueil n\u2019a pas pu \u00eatre construite\u00a0:</p>' +
+        '<pre style="background:var(--paper-warm);padding:1rem;border-radius:8px;overflow:auto;font-size:0.85rem;color:var(--ink);">' +
+        escapeHtml(String(err && err.stack || err)) +
+        '</pre>' +
+        '<button onclick="location.reload()" style="margin-top:1rem;padding:0.5rem 1rem;border-radius:6px;border:1px solid var(--border);background:var(--paper);color:var(--ink);cursor:pointer;">Recharger</button>' +
+        '</div>';
+    }
+  }
+}
+
+function _showWelcomeImpl() {
   invalidateEntriesCache(); // Ensure fresh count
   saveScrollPos();
   if (ttsActive) stopTTS();
@@ -5752,7 +5953,7 @@ function showWelcome() {
     document.querySelector('.mobile-tab-bar').classList.remove('reading');
     var strip = document.getElementById('mobileAlphaStrip');
     if (strip) strip.style.display = '';
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    clearTabActive();
     document.querySelector('[data-tab="home"]').classList.add('active');
   }
   
@@ -5762,8 +5963,8 @@ function showWelcome() {
   const nonPhilosophers = ['Religion','Langage','Logique','Vertu','Devoir','Pluralisme','Mythologie','Nature','Immanence','Substance','Providence','Transcendance','Raison','Sagesse','Libert\u00e9','Capitalisme','Colonialisme','Dialectique','Paradoxe','Identit\u00e9','Rationalisme','Empirisme','Paradigme','Mouvement','Devenir','Connaissance','Scepticisme','Th\u00e9ologie','Facticit\u00e9','Ontologie','Biologie'];
   allEntries.forEach(e => {
     if (e.category) e.category.split(' \u00b7 ').forEach(c => { if (c.trim()) categories.add(c.trim()); });
-    e.tags.forEach(t => {
-      if (t[0] === t[0].toUpperCase() && !nonPhilosophers.includes(t)) philosophers.add(t);
+    if (Array.isArray(e.tags)) e.tags.forEach(t => {
+      if (t && typeof t === 'string' && t.length > 0 && t[0] === t[0].toUpperCase() && !nonPhilosophers.includes(t)) philosophers.add(t);
     });
   });
   
@@ -5788,7 +5989,11 @@ function showWelcome() {
     </div>` : '';
   
   // Parcours guidés
-  const parcoursHtml = hasContent ? buildParcoursCards() : '';
+  let parcoursHtml = '';
+  if (hasContent) {
+    try { parcoursHtml = buildParcoursCards(); }
+    catch(e) { console.warn('[Parcours] build failed:', e); }
+  }
 
   // Dernières mises à jour (by _wikiTimestamp or _importDate, max 5)
   const recentUpdates = [...userEntries].filter(e => e._wikiTimestamp || e._importDate).sort((a, b) => (b._wikiTimestamp || b._importDate || '').localeCompare(a._wikiTimestamp || a._importDate || '')).slice(0, 5);
@@ -5908,14 +6113,18 @@ function toggleBookmark() {
 
 function toggleBookmarkFilter() {
   showOnlyBookmarks = !showOnlyBookmarks;
-  document.getElementById('bookmarkFilter').classList.toggle('active', showOnlyBookmarks);
+  document.getElementById('bookmarkFilter')?.classList.toggle('active', showOnlyBookmarks);
   renderEntryList();
 }
 
 // ===== MOBILE TAB BAR =====
+function clearTabActive() {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+}
+
 function switchTab(tab) {
   haptic('light');
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  clearTabActive();
   document.querySelector(`[data-tab="${tab}"]`)?.classList.add('active');
   
   if (tab === 'home') {
@@ -5963,7 +6172,7 @@ function openDrawer(tab) {
     const cats = getCategories();
     const filterHtml = `<div class="drawer-filter-strip" id="drawerFilterStrip">
       <button class="drawer-filter-chip active" data-cat="" onclick="drawerFilterCategory('', this)">Tout</button>
-      ${cats.map(c => `<button class="drawer-filter-chip" data-cat="${escapeAttr(c)}" onclick="drawerFilterCategory('${escapeAttr(c)}', this)">${c}</button>`).join('')}
+      ${cats.map(c => `<button class="drawer-filter-chip" data-cat="${escapeAttr(c)}" onclick="drawerFilterCategory(${jsAttr(c)}, this)">${c}</button>`).join('')}
     </div>`;
     
     alphaStrip.style.display = 'none';
@@ -6168,47 +6377,80 @@ function saveNote(id, text) {
 
 // ===== FEATURE: FICHE EXPRESS =====
 function buildFicheExpress(entry) {
-  var def = entry.definition.replace(/<[^>]+>/g, '');
-  var body = entry.content.replace(/<[^>]+>/g, '');
-  // Extract key sentences
-  var sentences = body.split(/[.!?]+/).filter(function(s) { return s.trim().length > 30; });
-  var keyPoints = [];
-  // First sentence is often key
-  if (sentences[0]) keyPoints.push(sentences[0].trim() + '.');
-  // Find sentences with key markers
-  var markers = ['est ', 'signifie', 'désigne', 'implique', 'suppose', 'selon ', 'pour ', 'consiste', 'se définit', 'renvoie'];
-  for (var i = 1; i < sentences.length && keyPoints.length < 5; i++) {
-    var s = sentences[i].trim();
-    for (var m = 0; m < markers.length; m++) {
-      if (s.toLowerCase().indexOf(markers[m]) >= 0 && keyPoints.indexOf(s + '.') < 0) {
-        keyPoints.push(s + '.');
-        break;
-      }
+  const stripHtml = s => (s || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+  const definition = stripHtml(entry.definition);
+  const body = stripHtml(entry.content);
+  const etymology = stripHtml(entry.etymology || '');
+  
+  let html = '<div class="fiche-express"><h4>Fiche express</h4>';
+  
+  // Section 1: Définition
+  if (definition) {
+    html += '<div class="fiche-section"><div class="fiche-label">Définition</div>';
+    html += '<p>' + escapeHtml(definition) + '</p></div>';
+  }
+  
+  // Section 2: Étymologie (only if non-trivial)
+  if (etymology && etymology.length > 10) {
+    html += '<div class="fiche-section"><div class="fiche-label">Étymologie</div>';
+    html += '<p>' + escapeHtml(etymology) + '</p></div>';
+  }
+  
+  // Section 3: Idées clés — first meaningful sentences from body
+  // Split on sentence boundary but protect common abbreviations (J.-J., etc., cf.)
+  const protectedBody = body
+    .replace(/\b(J\.-J|J\.-C|av\. J\.-C|apr\. J\.-C|cf|etc|p\. ex|c\.-à-d|i\.e|e\.g)\./gi, m => m.replace(/\./g, '\u0001'));
+  const sentences = protectedBody
+    .split(/(?<=[.!?])\s+(?=[A-ZÀ-Ö])/)
+    .map(s => s.replace(/\u0001/g, '.').trim())
+    .filter(s => s.length >= 40 && s.length <= 280);
+  
+  if (sentences.length > 0) {
+    // Take 3-4 first sentences, skipping pure citations
+    const points = [];
+    for (let i = 0; i < sentences.length && points.length < 4; i++) {
+      const s = sentences[i];
+      // Skip pure citations (start and end with quote)
+      if (/^[«"'].*[»"']\.?$/.test(s)) continue;
+      points.push(s);
+    }
+    if (points.length > 0) {
+      html += '<div class="fiche-section"><div class="fiche-label">Idées clés</div><ul>';
+      points.forEach(p => { html += '<li>' + escapeHtml(p) + '</li>'; });
+      html += '</ul></div>';
     }
   }
-  // Fill if needed
-  for (var i = 1; i < sentences.length && keyPoints.length < 4; i++) {
-    var s = sentences[i].trim() + '.';
-    if (keyPoints.indexOf(s) < 0) keyPoints.push(s);
+  
+  // Section 4: Philosophes mentionnés (filtered from tags)
+  if (entry.tags && entry.tags.length > 0) {
+    const philos = entry.tags.filter(t => /^[A-ZÀ-Ö]/.test(t)).slice(0, 8);
+    if (philos.length > 0) {
+      html += '<div class="fiche-section"><div class="fiche-label">Philosophes</div>';
+      html += '<div class="article-tags">';
+      philos.forEach(p => {
+        html += '<span class="article-tag" onclick="searchTag(' + jsAttr(p) + ')">' + escapeHtml(p) + '</span>';
+      });
+      html += '</div></div>';
+    }
   }
-  if (keyPoints.length === 0) keyPoints.push(def);
-  var html = '<div class="fiche-express"><h4>Fiche de r\u00e9vision</h4><ul>';
-  keyPoints.forEach(function(p) { html += '<li>' + p + '</li>'; });
-  html += '</ul>';
-  // Related terms
-  var related = (entry.related || []).slice(0, 5);
-  var auto = detectRelated(entry).slice(0, 5);
-  auto.forEach(function(r) { if (related.indexOf(r) < 0) related.push(r); });
-  if (related.length > 0) {
-    var all = getAllEntries();
-    html += '<div style="margin-top:0.75rem;font-size: 0.88rem;color:var(--muted-light);margin-bottom:0.35rem;">\u00c0 relier</div>';
-    html += '<div class="article-tags">';
-    related.slice(0,6).forEach(function(rid) {
-      var re = all.find(function(a) { return a.id === rid; });
-      if (re) html += '<span class="article-tag" onclick="navigateTo(\'' + safeId(re.id) + '\')">' + escapeHtml(re.term) + '</span>';
-    });
-    html += '</div>';
+  
+  // Section 5: À relier — combine explicit related + detected (deduplicated)
+  const relatedIds = [];
+  (entry.related || []).forEach(rid => relatedIds.push(rid));
+  detectRelated(entry).forEach(rid => { if (relatedIds.indexOf(rid) < 0) relatedIds.push(rid); });
+  if (relatedIds.length > 0) {
+    const all = getAllEntries();
+    const items = relatedIds.slice(0, 8).map(rid => all.find(a => a.id === rid)).filter(Boolean);
+    if (items.length > 0) {
+      html += '<div class="fiche-section"><div class="fiche-label">À relier</div>';
+      html += '<div class="article-tags">';
+      items.forEach(r => {
+        html += '<span class="article-tag" onclick="navigateTo(' + jsAttr(safeId(r.id)) + ')">' + escapeHtml(r.term) + '</span>';
+      });
+      html += '</div></div>';
+    }
   }
+  
   html += '</div>';
   return html;
 }
@@ -6411,7 +6653,7 @@ function buildCollectionPicker(articleId) {
   var html = '<div class="collection-pills">';
   Object.keys(collections).forEach(function(name) {
     var isIn = collections[name].indexOf(articleId) >= 0;
-    html += '<span class="collection-pill' + (isIn ? ' active' : '') + '" onclick="toggleArticleInCollection(\'' + escapeAttr(name) + '\',\'' + safeId(articleId) + '\',this)">' + (isIn ? '\u2713 ' : '') + escapeHtml(name) + '</span>';
+    html += '<span class="collection-pill' + (isIn ? ' active' : '') + '" onclick="toggleArticleInCollection(' + jsAttr(name) + ',' + jsAttr(safeId(articleId)) + ',this)">' + (isIn ? '\u2713 ' : '') + escapeHtml(name) + '</span>';
   });
   html += '<span class="collection-pill collection-add-btn" onclick="promptNewCollection(\'' + safeId(articleId) + '\')">+ Nouvelle</span>';
   html += '</div>';
@@ -6553,7 +6795,7 @@ function populateTocPanel() {
   for (var i = 0; i < headings.length; i++) {
     var h = headings[i];
     var isSub = h.tagName === 'H4';
-    html += '<a href="#" class="' + (isSub ? 'toc-sub' : '') + '" data-toc-idx="' + i + '" onclick="event.preventDefault();tocPanelJump(' + i + ')">' + h.textContent + '</a>';
+    html += '<a href="#" class="' + (isSub ? 'toc-sub' : '') + '" data-toc-idx="' + i + '" onclick="event.preventDefault();tocPanelJump(' + i + ')">' + escapeHtml(h.textContent) + '</a>';
   }
   
   // Add prev/next article links at bottom
@@ -6610,7 +6852,7 @@ function openSettings() {
 }
 
 function closeSettings() {
-  document.getElementById('settingsOverlay').classList.remove('open');
+  document.getElementById('settingsOverlay')?.classList.remove('open');
   document.body.style.overflow = '';
 }
 
@@ -7122,18 +7364,18 @@ function handleDoubleTap(e) {
 
 // ===== PARCOURS GUIDÉS =====
 var parcoursDefinitions = [
-  { id: 'ethique', icon: '⚖️', title: 'Éthique & morale', desc: 'Les fondements de l\'action juste',
-    keywords: ['éthique','morale','vertu','devoir','bien','mal','justice','bonheur','liberté','conscience','responsabilité','volonté'] },
-  { id: 'connaissance', icon: '🔍', title: 'Théorie de la connaissance', desc: 'Savoir, croire, douter',
-    keywords: ['connaissance','vérité','raison','empirisme','rationalisme','scepticisme','logique','science','certitude','doute','perception','jugement'] },
-  { id: 'politique', icon: '🏛️', title: 'Philosophie politique', desc: 'Pouvoir, société, contrat',
-    keywords: ['politique','état','pouvoir','démocratie','liberté','droit','justice','loi','contrat','société','capitalisme','colonialisme','révolution'] },
-  { id: 'existence', icon: '💭', title: 'Existence & métaphysique', desc: 'L\'être, le temps, la mort',
-    keywords: ['existence','être','néant','mort','temps','conscience','âme','substance','identité','devenir','ontologie','phénoménologie','absurde'] },
-  { id: 'langage', icon: '📖', title: 'Langage & pensée', desc: 'Mots, signes, vérité',
-    keywords: ['langage','signe','sens','vérité','logique','dialectique','rhétorique','herméneutique','interprétation','concept','idée','définition'] },
+  { id: 'ethique', icon: '⚖️', title: 'Éthique et morale', desc: 'Le bien, le mal, la vertu',
+    keywords: ['éthique', 'morale', 'vertu', 'devoir', 'bienfaisance', 'malveillance', 'bonheur', 'eudémonisme', 'utilitarisme', 'déontologie', 'conscience morale', 'responsabilité', 'culpabilité', 'altruisme', 'égoïsme', 'amitié', 'autrui', 'tolérance', 'compassion', 'dignité'] },
+  { id: 'connaissance', icon: '🔍', title: 'Théorie de la connaissance', desc: 'Savoir, vérité, méthode',
+    keywords: ['connaissance', 'épistémologie', 'vérité', 'empirisme', 'rationalisme', 'scepticisme', 'dogmatisme', 'criticisme', 'phénoménisme', 'apriori', 'aposteriori', 'induction', 'déduction', 'expérience', 'intuition', 'évidence', 'erreur', 'illusion', 'opinion', 'science', 'méthode'] },
+  { id: 'politique', icon: '🏛️', title: 'Philosophie politique', desc: 'État, pouvoir, justice',
+    keywords: ['politique', 'état', 'souveraineté', 'pouvoir', 'autorité', 'démocratie', 'république', 'monarchie', 'tyrannie', 'aristocratie', 'contrat social', 'citoyenneté', 'loi', 'droit', 'justice', 'égalité', 'fraternité', 'révolution', 'idéologie', 'libéralisme', 'socialisme', 'anarchisme', 'totalitarisme'] },
+  { id: 'existence', icon: '💭', title: 'Existence et métaphysique', desc: 'L\'être, le temps, la mort',
+    keywords: ['existence', 'essence', 'être', 'néant', 'ontologie', 'métaphysique', 'substance', 'accident', 'mort', 'finitude', 'temps', 'durée', 'éternité', 'devenir', 'identité', 'altérité', 'phénoménologie', 'transcendance', 'immanence', 'absurde', 'angoisse', 'authenticité'] },
+  { id: 'langage', icon: '📖', title: 'Langage et logique', desc: 'Signe, sens, raisonnement',
+    keywords: ['langage', 'langue', 'parole', 'signe', 'signifiant', 'signifié', 'symbole', 'sémantique', 'sémiotique', 'syntaxe', 'logique', 'proposition', 'syllogisme', 'paralogisme', 'sophisme', 'dialectique', 'rhétorique', 'herméneutique', 'interprétation', 'concept', 'jugement', 'définition', 'sens'] },
   { id: 'esthetique', icon: '🎭', title: 'Esthétique', desc: 'Le beau, l\'art, le sublime',
-    keywords: ['esthétique','art','beau','beauté','sublime','goût','création','imagination','sensible','contemplation'] }
+    keywords: ['esthétique', 'art', 'beau', 'beauté', 'sublime', 'goût', 'plaisir esthétique', 'jugement de goût', 'mimésis', 'imitation', 'création artistique', 'génie', 'imagination', 'sensibilité', 'contemplation', 'œuvre', 'style', 'tragique', 'comique', 'ironie'] }
 ];
 
 var activeParcoursId = lsGet('philo-active-parcours', '');
@@ -7142,21 +7384,44 @@ var parcoursProgress = safeParse(lsGet('philo-parcours-progress', '{}'), {});
 function getParcoursArticles(parcours) {
   var all = getAllEntries();
   var found = [];
-  var kws = parcours.keywords.map(function(k) { return k.toLowerCase(); });
-  all.forEach(function(e) {
-    var term = e.term.toLowerCase();
-    var cats = e.category.toLowerCase();
-    var tags = e.tags.map(function(t) { return t.toLowerCase(); });
-    var def = (e.definition || '').toLowerCase();
-    var score = 0;
-    kws.forEach(function(k) {
-      if (term.includes(k)) score += 5;
-      if (tags.some(function(t) { return t.includes(k); })) score += 3;
-      if (cats.includes(k)) score += 2;
-      if (def.includes(k)) score += 1;
-    });
-    if (score > 0) found.push({ entry: e, score: score });
+  // Normalize keywords (multi-word kept as phrases)
+  var kws = parcours.keywords.map(function(k) {
+    return { raw: k, norm: normalizeText(k) };
   });
+  
+  all.forEach(function(e) {
+    var termNorm = normalizeText(e.term);
+    var catNorm = normalizeText(e.category || '');
+    var tagsNorm = e.tags.map(function(t) { return normalizeText(t); });
+    var defNorm = normalizeText(e.definition || '');
+    var contentNorm = ' ' + normalizeText((e.content || '').replace(/<[^>]+>/g, '')).replace(/[^a-z0-9àâäéèêëîïôöùûüç-]+/gi, ' ') + ' ';
+    
+    var score = 0;
+    var matchedKws = new Set();
+    
+    kws.forEach(function(k) {
+      if (matchedKws.has(k.norm)) return;
+      // Exact term match (strongest signal)
+      if (termNorm === k.norm) { score += 10; matchedKws.add(k.norm); return; }
+      // Term contains keyword as whole word
+      if (new RegExp('(?:^|[^a-z0-9])' + k.norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-z0-9]|$)').test(' ' + termNorm + ' ')) {
+        score += 6; matchedKws.add(k.norm); return;
+      }
+      // Tag exact match
+      if (tagsNorm.indexOf(k.norm) >= 0) { score += 4; matchedKws.add(k.norm); return; }
+      // Category contains keyword as whole word
+      if (catNorm && new RegExp('(?:^|[^a-z0-9])' + k.norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-z0-9]|$)').test(' ' + catNorm + ' ')) {
+        score += 3; matchedKws.add(k.norm); return;
+      }
+      // Definition or content (weakest signal, requires word boundary)
+      var wordRe = new RegExp('(?:^|[^a-z0-9])' + k.norm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:[^a-z0-9]|$)');
+      if (wordRe.test(' ' + defNorm + ' ')) { score += 2; matchedKws.add(k.norm); return; }
+      if (wordRe.test(contentNorm)) { score += 1; matchedKws.add(k.norm); }
+    });
+    
+    if (score >= 3) found.push({ entry: e, score: score });
+  });
+  
   found.sort(function(a, b) { return b.score - a.score; });
   return found.slice(0, 12).map(function(f) { return f.entry; });
 }
@@ -7173,7 +7438,7 @@ function buildParcoursCards() {
     var prog = parcoursProgress[p.id] || [];
     var done = prog.filter(function(id) { return articles.some(function(a) { return a.id === id; }); }).length;
     var pct = Math.round(done / articles.length * 100);
-    html += '<button class="parcours-card" onclick="startParcours(\'' + p.id + '\')">' +
+    html += '<button class="parcours-card" onclick="startParcours(' + jsAttr(p.id) + ')">' +
       '<div class="parcours-icon">' + p.icon + '</div>' +
       '<div class="parcours-info"><div class="parcours-title">' + p.title + '</div>' +
       '<div class="parcours-meta">' + articles.length + ' articles · ' + p.desc + '</div></div>' +
@@ -7376,6 +7641,8 @@ function validateEntry(e) {
   e.id = safeId(e.id);
   e.term = String(e.term).slice(0, 200);
   e.category = String(e.category || '').slice(0, 200);
+  e.sortName = e.sortName ? String(e.sortName).slice(0, 200) : '';
+  e.isPerson = !!e.isPerson;
   e.letter = String(e.letter || e.term.charAt(0).toUpperCase()).slice(0, 1);
   e.tags = Array.isArray(e.tags) ? e.tags.map(function(t) { return String(t).slice(0, 100); }) : [];
   e.refs = Array.isArray(e.refs) ? e.refs.map(function(r) { return String(r).slice(0, 2000); }) : [];
@@ -7878,7 +8145,7 @@ function promptAddCustomTag(id) {
   var existingHtml = allCustomTagNames.length > 0
     ? '<div style="display:flex;flex-wrap:wrap;gap:0.25rem;margin-bottom:0.5rem;">' +
       allCustomTagNames.slice(0, 15).map(function(t) {
-        return '<span class="custom-tag" onclick="addCustomTag(\'' + safeId(id) + '\',\'' + escapeAttr(t) + '\')">' + escapeHtml(t) + '</span>';
+        return '<span class="custom-tag" onclick="addCustomTag(' + jsAttr(safeId(id)) + ',' + jsAttr(t) + ')">' + escapeHtml(t) + '</span>';
       }).join('') + '</div>'
     : '';
   
@@ -7891,7 +8158,7 @@ function buildCustomTagsHtml(id) {
   var html = '<div class="custom-tags-wrap">';
   tags.forEach(function(tag) {
     html += '<span class="custom-tag">' + escapeHtml(tag) +
-      ' <span class="custom-tag-remove" onclick="event.stopPropagation();removeCustomTag(\'' + safeId(id) + '\',\'' + escapeAttr(tag) + '\')">&times;</span></span>';
+      ' <span class="custom-tag-remove" onclick="event.stopPropagation();removeCustomTag(' + jsAttr(safeId(id)) + ',' + jsAttr(tag) + ')">&times;</span></span>';
   });
   html += '<button class="custom-tag-add" onclick="promptAddCustomTag(\'' + safeId(id) + '\')" title="Ajouter une étiquette">+</button>';
   html += '</div>';
@@ -7949,7 +8216,7 @@ function doEpubExport(btn) {
   }
   
   // Sort alphabetically
-  entries.sort(function(a, b) { return a.term.localeCompare(b.term, 'fr'); });
+  entries.sort(function(a, b) { return (a.sortName||a.term).localeCompare(b.sortName||b.term, 'fr'); });
   
   // Build EPUB structure
   var uuid = 'urn:uuid:' + (crypto.randomUUID ? crypto.randomUUID() : 
