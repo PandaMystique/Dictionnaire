@@ -8,6 +8,46 @@ err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 command -v node >/dev/null 2>&1 || err "Node.js requis"
 command -v npx  >/dev/null 2>&1 || err "npx non trouvé"
 
+# --- Capacitor 8 cibles (un seul endroit à mettre à jour quand Capacitor relève ses minimums) ---
+CAP8_MIN_SDK=24
+CAP8_COMPILE_SDK=36
+CAP8_TARGET_SDK=36
+CAP8_GRADLE=8.14.3
+CAP8_AGP=8.13.0
+
+# Capacitor 8 exige Node 22+ et JDK 21. On échoue tôt plutôt que de laisser Gradle
+# produire une erreur obscure plus loin.
+NODE_MAJOR=$(node -p "process.versions.node.split('.')[0]" 2>/dev/null || echo 0)
+[ "$NODE_MAJOR" -ge 22 ] || err "Capacitor 8 requiert Node 22+. Détecté : $(node --version 2>/dev/null). Installe Node 22 (nvm install 22, ou paquet LTS)."
+if command -v java >/dev/null 2>&1; then
+  JAVA_MAJOR=$(java -version 2>&1 | head -1 | sed -E 's/.*version "([0-9]+).*/\1/')
+  [ "${JAVA_MAJOR:-0}" -ge 21 ] 2>/dev/null || warn "JDK 21 recommandé pour Capacitor 8 (détecté : ${JAVA_MAJOR:-inconnu}). Le build Gradle pourrait échouer."
+else
+  warn "java introuvable — JDK 21 nécessaire pour compiler l'APK."
+fi
+
+# Applique les versions Android cibles au projet généré (filet de sécurité : le CLI v8
+# les pose normalement déjà, ceci corrige le cas où un plugin imposerait une valeur plus basse).
+enforce_android_versions() {
+  local VARS="android/variables.gradle"
+  if [ -f "$VARS" ]; then
+    sed -i -E "s/minSdkVersion = [0-9]+/minSdkVersion = ${CAP8_MIN_SDK}/" "$VARS"
+    sed -i -E "s/compileSdkVersion = [0-9]+/compileSdkVersion = ${CAP8_COMPILE_SDK}/" "$VARS"
+    sed -i -E "s/targetSdkVersion = [0-9]+/targetSdkVersion = ${CAP8_TARGET_SDK}/" "$VARS"
+    log "variables.gradle : compileSdk ${CAP8_COMPILE_SDK} / minSdk ${CAP8_MIN_SDK}"
+  fi
+  local WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
+  if [ -f "$WRAPPER" ]; then
+    sed -i -E "s#gradle-[0-9.]+-(all|bin)\.zip#gradle-${CAP8_GRADLE}-all.zip#" "$WRAPPER"
+    log "Gradle wrapper : ${CAP8_GRADLE}"
+  fi
+  local ROOT_GRADLE="android/build.gradle"
+  if [ -f "$ROOT_GRADLE" ]; then
+    sed -i -E "s#com\.android\.tools\.build:gradle:[0-9.]+#com.android.tools.build:gradle:${CAP8_AGP}#" "$ROOT_GRADLE"
+    log "AGP : ${CAP8_AGP}"
+  fi
+}
+
 if [ -z "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
   [ -d "$HOME/Android/Sdk" ] && export ANDROID_HOME="$HOME/Android/Sdk"
   [ -d "$HOME/Library/Android/sdk" ] && export ANDROID_HOME="$HOME/Library/Android/sdk"
@@ -33,6 +73,8 @@ log "Plateforme Android présente"
 
 npx cap sync android
 log "Sync OK"
+
+enforce_android_versions
 
 ANDROID_RES="android/app/src/main/res"
 cat > "$ANDROID_RES/values/colors.xml" << 'COLORS'

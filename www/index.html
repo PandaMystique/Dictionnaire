@@ -31,6 +31,8 @@
   --mono: 'JetBrains Mono', monospace;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-top: env(safe-area-inset-top, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
   --tab-height: 60px;
 }
 
@@ -747,6 +749,8 @@ body::before {
   background: var(--ink);
   z-index: 200;
   padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
   box-shadow: 0 -2px 20px var(--shadow-deep);
   transition: transform 0.3s ease;
 }
@@ -1008,6 +1012,8 @@ body::before {
   color: var(--paper);
   padding: 0.6rem 0.75rem;
   padding-top: calc(0.6rem + var(--safe-top));
+  padding-left: calc(0.75rem + var(--safe-left));
+  padding-right: calc(0.75rem + var(--safe-right));
   align-items: center;
   gap: 0.5rem;
   box-shadow: 0 2px 12px var(--shadow-deep);
