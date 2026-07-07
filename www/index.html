@@ -3250,23 +3250,27 @@ body.has-toolbar .focus-toggle { display: none !important; }
 // Android WebView peut effacer localStorage à la fermeture. IndexedDB persiste.
 const PhiloDB = {
   db: null,
+  _opening: null,
   STORE: 'data',
   DB_NAME: 'philo-dict',
   
   open() {
-    return new Promise((resolve, reject) => {
-      if (this.db) { resolve(this.db); return; }
+    if (this.db) return Promise.resolve(this.db);
+    // Cache the in-flight promise so concurrent callers share one connection attempt
+    if (this._opening) return this._opening;
+    this._opening = new Promise((resolve) => {
       const req = indexedDB.open(this.DB_NAME, 1);
       req.onupgradeneeded = (e) => {
         e.target.result.createObjectStore(this.STORE);
       };
       req.onsuccess = (e) => {
         this.db = e.target.result;
-        this.db.onversionchange = () => { this.db.close(); this.db = null; };
+        this.db.onversionchange = () => { this.db.close(); this.db = null; this._opening = null; };
         resolve(this.db);
       };
-      req.onerror = () => resolve(null); // Fallback to localStorage
+      req.onerror = () => { this._opening = null; resolve(null); }; // Fallback to localStorage
     });
+    return this._opening;
   },
   
   async get(key) {
@@ -3282,21 +3286,28 @@ const PhiloDB = {
     } catch(e) { return null; }
   },
   
+  // Resolves true only once the transaction has COMMITTED (tx.oncomplete). Resolving on
+  // put() alone would let the app close before the write is durable, silently losing it.
   async set(key, value) {
+    let ok = false;
     try {
       const db = await this.open();
-      if (!db) return;
-      const tx = db.transaction(this.STORE, 'readwrite');
-      tx.objectStore(this.STORE).put(value, key);
-      tx.onerror = function(e) {
-        if (e.target.error && e.target.error.name === 'QuotaExceededError') {
-          console.warn('[PhiloDB] Quota exceeded for key:', key);
-        }
-      };
+      if (db) {
+        ok = await new Promise((resolve) => {
+          const tx = db.transaction(this.STORE, 'readwrite');
+          tx.objectStore(this.STORE).put(value, key);
+          tx.oncomplete = () => resolve(true);
+          tx.onabort = tx.onerror = (e) => {
+            const err = (e.target && e.target.error) || tx.error;
+            if (err && err.name === 'QuotaExceededError') console.warn('[PhiloDB] Quota IDB dépassé pour', key);
+            resolve(false);
+          };
+        });
+      }
     } catch(e) {
-      console.warn('[PhiloDB] IDB write error:', e.message);
+      console.warn('[PhiloDB] IDB write error:', e && e.message);
     }
-    // Always also write to localStorage as secondary backup
+    // Always also write to localStorage as secondary backup (small keys only benefit)
     try {
       localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
     } catch(e) {
@@ -3307,6 +3318,25 @@ const PhiloDB = {
         try { localStorage.removeItem('philo-reading-times'); } catch(x) {}
       }
     }
+    return ok;
+  },
+
+  // Write several keys in ONE transaction: either all commit or none. Used for the
+  // entries + revision pair, whose coherence is what the startup restore relies on.
+  // No localStorage side-writes here: the caller decides, so a huge value failing in
+  // localStorage can never let a small companion key (the revision) slip through alone.
+  async setMany(pairs) {
+    try {
+      const db = await this.open();
+      if (!db) return false;
+      return await new Promise((resolve) => {
+        const tx = db.transaction(this.STORE, 'readwrite');
+        const store = tx.objectStore(this.STORE);
+        pairs.forEach(function(p) { store.put(p[1], p[0]); });
+        tx.oncomplete = () => resolve(true);
+        tx.onabort = tx.onerror = () => resolve(false);
+      });
+    } catch(e) { return false; }
   }
 };
 
@@ -3327,7 +3357,8 @@ let userEntries = safeParse(lsGet('philo-user-entries', '[]'), []);
 
 var _entriesCache = null;
 var _entriesCacheDirty = true;
-function invalidateEntriesCache() { _entriesCache = null; _entriesCacheDirty = true; _citationIndex = null; }
+var _searchGen = 0;
+function invalidateEntriesCache() { _entriesCache = null; _entriesCacheDirty = true; _citationIndex = null; _searchGen++; }
 function getAllEntries() {
   if (_entriesCache && !_entriesCacheDirty) return _entriesCache;
   _entriesCache = [...dictionary, ...userEntries].sort((a, b) => (a.sortName || a.term).localeCompare(b.sortName || b.term, 'fr'));
@@ -3335,11 +3366,41 @@ function getAllEntries() {
   return _entriesCache;
 }
 
-function saveUserEntries() {
+// Runtime cache keys: live on entry objects for speed, must never reach storage.
+// Persisting them roughly triples the payload (content + its stripped and normalized
+// copies), which can silently blow the localStorage quota, and a stale blob reloaded
+// under a matching generation would desynchronize search from the real content.
+var RUNTIME_CACHE_KEYS = ['_plainContent','_pcGen','_searchBlob','_sbGen','_suggestBlob','_qbGen','_readTime','_rtGen'];
+// Monotonic revision of userEntries, mirrored in localStorage and IndexedDB, so startup
+// restore can pick the genuinely newer copy instead of guessing by entry count.
+var _entriesRev = parseInt(lsGet('philo-entries-rev', '0'), 10) || 0;
+
+async function saveUserEntries() {
   invalidateEntriesCache();
-  const json = JSON.stringify(userEntries);
-  try { localStorage.setItem('philo-user-entries', json); } catch(e) {}
-  PhiloDB.set('philo-user-entries', json);
+  const json = JSON.stringify(userEntries, function(key, value) {
+    return RUNTIME_CACHE_KEYS.indexOf(key) >= 0 ? undefined : value;
+  });
+  _entriesRev++;
+  // localStorage: the revision is written ONLY after the entries succeeded (same try,
+  // entries first). If the entries exceed the quota, the revision stays at its last
+  // coherent value, so localStorage can never claim to be newer than it really is.
+  let lsOk = false;
+  try {
+    localStorage.setItem('philo-user-entries', json);
+    localStorage.setItem('philo-entries-rev', String(_entriesRev));
+    lsOk = true;
+  } catch(e) {
+    console.warn('[stockage] localStorage saturé (' + Math.round(json.length / 1024) + ' Ko) — IndexedDB devient la copie de référence');
+  }
+  // IndexedDB: entries and revision in one atomic transaction, confirmed committed.
+  const idbOk = await PhiloDB.setMany([
+    ['philo-user-entries', json],
+    ['philo-entries-rev', String(_entriesRev)]
+  ]);
+  if (!idbOk && !lsOk) {
+    console.warn('[stockage] ÉCHEC des deux magasins — les données de cette session risquent d\u2019être perdues à la fermeture');
+  }
+  return idbOk || lsOk;
 }
 
 // ===== STATE =====
@@ -3441,6 +3502,60 @@ function normalizeText(str) {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+// Identity key for a Wikilivres article, used to decide whether it is already imported.
+// It is the concept name alone: the last path segment (so a full title like
+// "Dictionnaire de philosophie/Kant", or an older "Philosophie/Kant", reduces to "kant"),
+// with accents, case and whitespace (including non-breaking spaces) normalized. Matching on
+// this instead of on an exact stored term is what prevents the import from re-downloading a
+// whole library that was saved by an earlier version with a different title format.
+function conceptKey(s) {
+  s = String(s == null ? '' : s).split('/').pop();
+  s = normalizeText(s);
+  return s.replace(/[\s\u00a0\u202f\u2007\u2060]+/g, ' ').trim();
+}
+
+// ----- Per-entry search caches -----
+// Stripping HTML from an article body and NFD-normalizing it is expensive; doing it for
+// every entry on every keystroke is what made search feel slow. We compute these once per
+// entry and reuse them until the data changes. Invalidation is O(1): invalidateEntriesCache()
+// bumps _searchGen, and each cache carries the generation it was built under, so a stale
+// cache is detected lazily on next access without iterating every entry.
+function plainContent(e) {
+  if (e._plainContent != null && e._pcGen === _searchGen) return e._plainContent;
+  e._plainContent = (e.content || '').replace(/<[^>]+>/g, '');
+  e._pcGen = _searchGen;
+  return e._plainContent;
+}
+function buildSearchBlob(e) {
+  if (e._searchBlob != null && e._sbGen === _searchGen) return e._searchBlob;
+  var raw = (e.term || '') + ' ' + (e.category || '') + ' ' + (e.definition || '') + ' ' +
+            (e.tags ? e.tags.join(' ') : '') + ' ' + (e.etymology || '') + ' ' + plainContent(e);
+  e._searchBlob = normalizeText(raw);
+  e._sbGen = _searchGen;
+  return e._searchBlob;
+}
+function buildSuggestBlob(e) {
+  if (e._suggestBlob != null && e._qbGen === _searchGen) return e._suggestBlob;
+  e._suggestBlob = normalizeText((e.term || '') + ' ' + (e.category || '') + ' ' + (e.tags ? e.tags.join(' ') : ''));
+  e._qbGen = _searchGen;
+  return e._suggestBlob;
+}
+
+// Build the (expensive) full-content search blobs ahead of time, in small time slices so
+// the UI never blocks, so the first search is already instant rather than paying the
+// normalization cost on the first keystroke. Re-entrant-safe: if the data changes, blobs
+// rebuild lazily via the generation check; a wasted pre-warm is harmless.
+function prewarmSearchCaches() {
+  var entries = getAllEntries();
+  var i = 0;
+  function step() {
+    var start = Date.now();
+    while (i < entries.length && Date.now() - start < 10) { buildSearchBlob(entries[i]); i++; }
+    if (i < entries.length) setTimeout(step, 30);
+  }
+  step();
+}
+
 function debounce(fn, ms) {
   var t = null;
   return function() {
@@ -3495,38 +3610,46 @@ function expandWithSynonyms(term) {
   return synonyms ? [n].concat(synonyms) : [n];
 }
 
-function fuzzyMatch(needle, haystack) {
-  const n = normalizeText(needle);
-  const h = normalizeText(haystack);
-  // Exact substring first
-  if (h.includes(n)) return true;
-  // Synonym matching
-  var expanded = expandWithSynonyms(needle);
-  if (expanded.length > 1 && expanded.some(function(syn) { return h.includes(syn); })) return true;
-  // Token matching: all words of needle must appear in haystack
-  const words = n.split(/\s+/).filter(w => w.length > 1);
+// Core matcher operating on already-normalized strings. The query-dependent pieces
+// (normalized needle, its words, its synonyms) are computed ONCE per search by the caller
+// and passed in, instead of being recomputed for every entry.
+function fuzzyMatchNorm(n, h, words, synonyms) {
+  if (h.indexOf(n) >= 0) return true;
+  if (synonyms && synonyms.length > 1) {
+    for (var s = 0; s < synonyms.length; s++) { if (h.indexOf(synonyms[s]) >= 0) return true; }
+  }
   if (words.length > 1) {
-    return words.every(w => h.includes(w));
+    for (var w = 0; w < words.length; w++) { if (h.indexOf(words[w]) < 0) return false; }
+    return true;
   }
-  // Levenshtein-lite: allow 1 char difference for short terms
   if (n.length >= 4 && n.length <= 12) {
-    const tokens = h.split(/[\s,\xb7:;.()\[\]]+/);
-    return tokens.some(t => {
-      if (Math.abs(t.length - n.length) > 1) return false;
-      let diffs = 0;
-      for (let i = 0; i < Math.max(t.length, n.length); i++) {
-        if (t[i] !== n[i]) diffs++;
-        if (diffs > 1) return false;
-      }
-      return true;
-    });
+    var tokens = h.split(/[\s,\xb7:;.()\[\]]+/);
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i];
+      if (Math.abs(t.length - n.length) > 1) continue;
+      var diffs = 0, ok = true, max = Math.max(t.length, n.length);
+      for (var j = 0; j < max; j++) { if (t[j] !== n[j]) diffs++; if (diffs > 1) { ok = false; break; } }
+      if (ok) return true;
+    }
+    return false;
   }
-  // Prefix matching (3+ chars)
   if (n.length >= 3) {
-    const tokens = h.split(/[\s,\xb7:;.()\[\]]+/);
-    return tokens.some(t => t.startsWith(n));
+    var tk = h.split(/[\s,\xb7:;.()\[\]]+/);
+    for (var k = 0; k < tk.length; k++) { if (tk[k].startsWith(n)) return true; }
+    return false;
   }
   return false;
+}
+
+// Precompute the query-dependent pieces a single time.
+function buildQuery(needle) {
+  var n = normalizeText(needle);
+  return { n: n, words: n.split(/\s+/).filter(function(w) { return w.length > 1; }), synonyms: expandWithSynonyms(needle) };
+}
+
+function fuzzyMatch(needle, haystack) {
+  var q = buildQuery(needle);
+  return fuzzyMatchNorm(q.n, normalizeText(haystack), q.words, q.synonyms);
 }
 
 // ===== CATEGORY FILTERS =====
@@ -3560,56 +3683,65 @@ function toggleCategoryFilter(cat) {
 }
 
 // ===== AUTO-LINKING =====
+// Auto-linking and related-detection both scan every term against an article on each open.
+// Building (and normalizing) the term list once per data change — rather than per open —
+// removes most of that cost. Tied to _searchGen so it rebuilds after any edit/import.
+var _termIndex = null, _termIndexGen = -1;
+function getTermIndex() {
+  if (_termIndex && _termIndexGen === _searchGen) return _termIndex;
+  _termIndex = getAllEntries().map(function(e) {
+    var term = e.term || '';
+    return { id: e.id, term: term, lower: term.toLowerCase(), norm: normalizeText(term) };
+  }).sort(function(a, b) { return b.term.length - a.term.length; }); // longest first
+  _termIndexGen = _searchGen;
+  return _termIndex;
+}
+
 function autoLinkContent(html, currentId) {
-  const allEntries = getAllEntries();
-  // Build lookup of terms → ids (longest first to avoid partial matches)
-  const terms = allEntries
-    .filter(e => e.id !== currentId)
-    .map(e => ({ term: e.term, id: e.id }))
-    .sort((a, b) => b.term.length - a.term.length);
-  
-  // Only replace in text nodes (not inside tags or existing links)
-  // We process the HTML by splitting around tags
+  const terms = getTermIndex();
+  // Cheap case-insensitive snapshot for pre-filtering. It only ever over-includes (a term
+  // already wrapped in <a> still appears here), and the precise regex below rejects those,
+  // so correctness is unaffected while ~99% of regex compilations are skipped.
+  const lowerHtml = html.toLowerCase();
   const linked = new Set();
-  
-  for (const { term, id } of terms) {
-    if (linked.has(id)) continue;
-    // Escape special regex characters in term
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    // Skip terms that would create problematic regex
+
+  for (let i = 0; i < terms.length; i++) {
+    const t = terms[i];
+    if (t.id === currentId || t.term.length < 2 || linked.has(t.id)) continue;
+    if (lowerHtml.indexOf(t.lower) < 0) continue; // pre-filter before the expensive regex
+    const escaped = t.term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     if (escaped.length < 2) continue;
     try {
-    // Match whole word, case insensitive, but not inside HTML tags or already linked
-    const regex = new RegExp(`(?<![<\\/\\w"=])\\b(${escaped})\\b(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
-    if (regex.test(html)) {
-      html = html.replace(regex, `<a class="auto-link" data-link-id="${safeId(id)}" onclick="navigateTo('${safeId(id)}')">$1</a>`);
-      linked.add(id);
-    }
+      const regex = new RegExp(`(?<![<\\/\\w"=])\\b(${escaped})\\b(?![^<]*>)(?![^<]*<\\/a>)`, 'i');
+      if (regex.test(html)) {
+        html = html.replace(regex, `<a class="auto-link" data-link-id="${safeId(t.id)}" onclick="navigateTo('${safeId(t.id)}')">$1</a>`);
+        linked.add(t.id);
+      }
     } catch(e) { /* skip term with bad regex */ }
   }
-  
   return html;
 }
 
 // ===== AUTO-DETECT RELATED =====
 function detectRelated(entry) {
-  const allEntries = getAllEntries();
+  const terms = getTermIndex();
   // Normalize content once; word-boundary matching requires a tokenized form
   const contentRaw = (entry.content + ' ' + entry.definition + ' ' + entry.tags.join(' '));
   const contentNorm = ' ' + normalizeText(contentRaw).replace(/[^a-z0-9àâäéèêëîïôöùûüç-]+/gi, ' ') + ' ';
   const existingRelated = new Set(entry.related || []);
   const scored = [];
 
-  for (const other of allEntries) {
-    if (other.id === entry.id || existingRelated.has(other.id)) continue;
-    const termNorm = normalizeText(other.term);
+  for (let i = 0; i < terms.length; i++) {
+    const t = terms[i];
+    if (t.id === entry.id || existingRelated.has(t.id)) continue;
+    const termNorm = t.norm;
     // Skip very short terms (false positives: "art" matches "départ", "être" matches "êtres")
     if (termNorm.length < 5) continue;
-    // Word-boundary search: count occurrences of termNorm bracketed by non-word chars
+    if (contentNorm.indexOf(termNorm) < 0) continue; // pre-filter before the word-boundary regex
     const re = new RegExp('(?:^|[^a-z0-9])' + termNorm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:s|es)?(?:[^a-z0-9]|$)', 'g');
     const matches = contentNorm.match(re);
     if (matches && matches.length > 0) {
-      scored.push({ id: other.id, count: matches.length, length: termNorm.length });
+      scored.push({ id: t.id, count: matches.length, length: termNorm.length });
     }
   }
 
@@ -3661,6 +3793,29 @@ function getCitedIn(entry) {
 }
 
 // ===== MASS IMPORT =====
+// Make the in-memory userEntries reflect the durable IndexedDB copy. Android WebViews can
+// evict localStorage between launches, so at startup userEntries may be empty until the
+// asynchronous restore runs. Any operation that deduplicates against userEntries (chiefly
+// the mass import) must call this first; otherwise every already-stored article looks new
+// and gets downloaded again. Uses the revision counter when present, with a legacy
+// entry-count fallback for installs predating it.
+async function ensureEntriesFromIDB() {
+  try {
+    var raw = await PhiloDB.get('philo-user-entries');
+    if (!raw) return;
+    var parsed = safeParse(raw, []);
+    if (!Array.isArray(parsed)) return;
+    var idbRev = parseInt(await PhiloDB.get('philo-entries-rev'), 10) || 0;
+    var richer = parsed.length > userEntries.length;
+    var newer = (idbRev || _entriesRev) ? (idbRev > _entriesRev || (idbRev === _entriesRev && richer)) : richer;
+    if (newer) {
+      userEntries = parsed.map(function(e) { return validateEntry(e); }).filter(Boolean);
+      _entriesRev = Math.max(_entriesRev, idbRev);
+      invalidateEntriesCache();
+    }
+  } catch (e) {}
+}
+
 async function massImportFromWikibooks() {
   if (massImportRunning) return;
   massImportRunning = true;
@@ -3706,19 +3861,27 @@ async function massImportFromWikibooks() {
     return;
   }
   
-  // Filter out already existing entries and single-letter index pages
-  // Build dedup sets from BOTH term and _wikiTitle for robustness
-  const existingTerms = new Set(getAllEntries().map(e => normalizeText(e.term)));
-  const existingWikiTitles = new Set(userEntries.filter(e => e._wikiTitle).map(e => e._wikiTitle));
+  // Guard against an Android localStorage wipe that would leave userEntries empty and make
+  // every article look new: reload from IndexedDB (the durable store) before deduplicating.
+  await ensureEntriesFromIDB();
+
+  // Filter out already existing entries and single-letter index pages.
+  // Dedup on the concept name (see conceptKey) so a library saved by an older version, or
+  // via the single-article import, or with the full title stored as the term, is still
+  // recognized instead of being downloaded again. We seed the set from both the term and,
+  // when present, the stored wiki title.
+  const existingKeys = new Set();
+  getAllEntries().forEach(function(e) {
+    existingKeys.add(conceptKey(e.term));
+    if (e._wikiTitle) existingKeys.add(conceptKey(e._wikiTitle));
+  });
   const toImport = pageList.filter(title => {
     const display = title.split('/').pop();
     // Skip single-letter index pages (A, B, C, etc.)
     if (/^[A-Z\u00C0-\u00FF]$/i.test(display.trim())) return false;
     // Skip meta pages (Sommaire, Index, etc.)
     if (/^(Sommaire|Index|Pr[eé]face)$/i.test(display.trim())) return false;
-    // Skip if wiki title already imported
-    if (existingWikiTitles.has(title)) return false;
-    return !existingTerms.has(normalizeText(display));
+    return !existingKeys.has(conceptKey(title));
   });
   
   setStatus(`${toImport.length} articles \u00e0 importer (${pageList.length - toImport.length} d\u00e9j\u00e0 pr\u00e9sents)`, 5);
@@ -3741,14 +3904,10 @@ async function massImportFromWikibooks() {
     const pct = 5 + (95 * (i + 1) / toImport.length);
     const displayTitle = title.split('/').pop().replace(/\//g, ' & ');
     
-    // Double-check: skip if already imported in this run or by a concurrent import
-    const termNorm = normalizeText(displayTitle);
-    if (importedInThisRun.has(termNorm) || existingWikiTitles.has(title)) {
-      skipped++;
-      continue;
-    }
-    // Also check if term appeared since we started (e.g. concurrent tab)
-    if (userEntries.some(e => normalizeText(e.term) === termNorm)) {
+    // Double-check: skip if already imported in this run or already present (e.g. a
+    // concurrent import, or a title whose concept name matches an existing entry).
+    const key = conceptKey(title);
+    if (importedInThisRun.has(key) || existingKeys.has(key)) {
       skipped++;
       continue;
     }
@@ -3789,7 +3948,6 @@ async function massImportFromWikibooks() {
             refs: parsed.refs,
             related: [],
             _userEntry: true,
-            _wikiSource: wikitext,
             _wikiRaw: rawContent,
             _wikiRevId: rev.revid || null,
             _wikiTimestamp: rev.timestamp || null,
@@ -3799,12 +3957,14 @@ async function massImportFromWikibooks() {
           
           userEntries.push(entry);
           imported++;
-          importedInThisRun.add(termNorm);
-          existingWikiTitles.add(title);
+          importedInThisRun.add(key);
+          existingKeys.add(key);
           
-          // Periodic save every 10 articles (prevents data loss on crash)
+          // Periodic save every 10 articles (prevents data loss on crash).
+          // Awaited: the commit is confirmed before continuing, so closing the app
+          // mid-import loses at most the articles fetched since the last commit.
           if (imported % 10 === 0) {
-            saveUserEntries();
+            await saveUserEntries();
           }
         }
       }
@@ -3816,9 +3976,9 @@ async function massImportFromWikibooks() {
     await new Promise(r => setTimeout(r, 150));
   }
   
-  // Final save and refresh
+  // Final save and refresh (awaited: commit confirmed before announcing completion)
   invalidateEntriesCache();
-  saveUserEntries();
+  await saveUserEntries();
   updateEntryCount();
   buildAlphaNav();
   buildFilterBar();
@@ -4198,7 +4358,7 @@ function openEditor(entryId) {
       existingCat = entry.category;
       existingEtym = entry.etymology;
       existingTags = entry.tags.join(', ');
-      existingWiki = entry._wikiSource || '';
+      existingWiki = entryWikiSource(entry);
       topTitle = 'Modifier l\u2019article';
     }
   }
@@ -4334,8 +4494,9 @@ function jsAttr(s) { return escapeAttr(JSON.stringify(String(s))); }
 
 function getReadTime(entry) {
   if (!entry || !entry.content) return 1;
-  if (entry._readTime != null) return entry._readTime;
-  entry._readTime = Math.max(1, Math.round(entry.content.replace(/<[^>]+>/g, '').split(/\s+/).length / 200));
+  if (entry._readTime != null && entry._rtGen === _searchGen) return entry._readTime;
+  entry._readTime = Math.max(1, Math.round(plainContent(entry).split(/\s+/).length / 200));
+  entry._rtGen = _searchGen;
   return entry._readTime;
 }
 
@@ -4611,7 +4772,7 @@ async function importFromWikibooks() {
     const tried = pagesToTry.map(t => '\u00ab\u202f' + escapeHtml(t) + '\u202f\u00bb').join(', ');
     statusEl.className = 'import-status error';
     statusEl.innerHTML = '\u2717 Article introuvable. Pages test\u00e9es\u202f: ' + tried 
-      + '. <a href="https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie" target="_blank" style="color:inherit;text-decoration:underline;">V\u00e9rifier sur Wikilivres</a>';
+      + '. <a href="https://fr.wikibooks.org/wiki/Dictionnaire_de_philosophie" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;">V\u00e9rifier sur Wikilivres</a>';
     return;
   }
   
@@ -4668,6 +4829,17 @@ function cleanWikitext(text) {
   text = text.replace(/\n{3,}/g, '\n\n').trim();
   
   return text;
+}
+
+// Wikitext source of an entry. Wiki-imported entries keep only the raw wikitext
+// (_wikiRaw); the cleaned form is derived on demand instead of being stored as a
+// second full copy, which cut roughly a third of the persisted payload. Editor-only
+// entries have no raw and keep their _wikiSource as the single source of truth.
+function entryWikiSource(e) {
+  if (!e) return '';
+  if (e._wikiSource) return e._wikiSource;
+  if (e._wikiRaw) { try { return cleanWikitext(e._wikiRaw); } catch(x) { return ''; } }
+  return '';
 }
 
 function extractWikiCategory(rawWikitext) {
@@ -4825,7 +4997,7 @@ function showEditorTab(tab, btn) {
 }
 
 var savingEntry = false;
-function saveEntry() {
+async function saveEntry() {
   if (savingEntry) return;
   savingEntry = true;
   setTimeout(function() { savingEntry = false; }, 500);
@@ -4879,7 +5051,7 @@ function saveEntry() {
   }
   
   invalidateEntriesCache();
-  saveUserEntries();
+  await saveUserEntries();
   editingEntryId = null;
   
   // Refresh and show the new article
@@ -4889,11 +5061,11 @@ function saveEntry() {
   showArticle(entry.id);
 }
 
-function deleteUserEntry(id) {
+async function deleteUserEntry(id) {
   if (!confirm('Supprimer cet article personnalisé ?')) return;
   userEntries = userEntries.filter(e => e.id !== id);
   invalidateEntriesCache();
-  saveUserEntries();
+  await saveUserEntries();
   updateEntryCount();
   buildAlphaNav();
   renderEntryList();
@@ -4940,6 +5112,11 @@ function applyFontSize() {
 // ===== FOOTNOTES =====
 function buildFootnotes(html, refs) {
   // Inline refs are stored as <x-ref n="N"> markers pointing into refs[N-1].
+  // Defense in depth: a ref can reach here from a JSON-import path that did not go
+  // through parseMediaWiki. validateEntry already sanitizes refs at import time; we
+  // sanitize once more here so the rendered footnote/bibliography HTML is safe no
+  // matter how the entry was produced or stored.
+  refs = Array.isArray(refs) ? refs.map(function(r) { return sanitizeHtml(String(r == null ? '' : r)); }) : [];
   // We deduplicate notes by their text: the same source cited several times becomes
   // ONE note with several back-links (a, b, c…). Bibliography entries (refs never
   // cited inline) are shown in a separate "Bibliographie" block, and any that merely
@@ -5142,9 +5319,14 @@ function showSearchSuggestions(query) {
     return;
   }
   
+  const q = buildQuery(query);
   const results = getAllEntries().filter(e => {
-    var ct = (customArticleTags[e.id] || []).join(' ');
-    return fuzzyMatch(query, `${e.term} ${e.category} ${e.tags.join(' ')} ${ct}`);
+    var blob = buildSuggestBlob(e);
+    var ct = customArticleTags[e.id];
+    // Custom tags live in a separate map that changes independently, so they are appended
+    // fresh (cheap — usually empty) rather than baked into the cached blob.
+    if (ct && ct.length) blob = blob + ' ' + normalizeText(ct.join(' '));
+    return fuzzyMatchNorm(q.n, blob, q.words, q.synonyms);
   }).slice(0, 6);
   
   if (results.length === 0) {
@@ -5170,7 +5352,7 @@ function showPhilosopherIndex() {
   const knownPhilosophers = ['Aristote','Platon','Socrate','Descartes','Kant','Hegel','Nietzsche','Heidegger','Spinoza','Leibniz','Hume','Locke','Marx','Sartre','Husserl','Wittgenstein','Bergson','Kierkegaard','Schopenhauer','\u00c9picure','Thomas d\'Aquin','Augustin','Montaigne','Pascal','Rousseau','Hobbes','Levinas','Derrida','Foucault','Deleuze','Merleau-Ponty','Russell','Frege','Quine','Popper','Kuhn','Duns Scot','Ockham','Ab\u00e9lard','Averro\u00e8s','Avicenne','Plotin'];
   
   allEntries.forEach(e => {
-    const text = e.content.replace(/<[^>]+>/g, '') + ' ' + e.tags.join(' ');
+    const text = plainContent(e) + ' ' + e.tags.join(' ');
     knownPhilosophers.forEach(p => {
       if (text.includes(p)) {
         if (!philosophers.has(p)) philosophers.set(p, []);
@@ -5321,7 +5503,7 @@ function recategorizeAll() {
 }
 
 // ===== RE-PROCESS ARTICLES (re-parse stored wikitext with current parser) =====
-function reprocessAllArticles() {
+async function reprocessAllArticles() {
   var withRaw = userEntries.filter(function(e) { return e._wikiRaw || e._wikiSource; });
   var total = userEntries.length;
   if (withRaw.length === 0) {
@@ -5367,7 +5549,7 @@ function reprocessAllArticles() {
   
   if (count > 0) {
     invalidateEntriesCache();
-    saveUserEntries();
+    await saveUserEntries();
     alert(count + ' article' + (count > 1 ? 's' : '') + ' re-traité' + (count > 1 ? 's' : '') + ' avec succès.');
     showWelcome();
   } else {
@@ -5420,19 +5602,35 @@ function checkDuplicate(title) {
 var idbRestoreComplete = false;
 async function restoreFromIDB() {
   try {
+    const idbRev = parseInt(await PhiloDB.get('philo-entries-rev'), 10) || 0;
     const idbEntries = await PhiloDB.get('philo-user-entries');
     if (idbEntries) {
       const parsed = safeParse(idbEntries, []);
-      // Use IDB data if it has more entries than localStorage (localStorage was wiped)
-      if (Array.isArray(parsed) && parsed.length > userEntries.length) {
+      // Prefer explicit revisions when either store carries one; at EQUAL revisions a
+      // strictly richer IndexedDB copy wins (this recovers installs where a localStorage
+      // quota failure let a stale revision claim parity). A deletion leaves equal counts
+      // at equal revisions, so it cannot be resurrected by this rule. Legacy fallback
+      // (no revision anywhere): more entries wins.
+      const richer = Array.isArray(parsed) && parsed.length > userEntries.length;
+      const useIdb = Array.isArray(parsed) && (
+        (idbRev || _entriesRev) ? (idbRev > _entriesRev || (idbRev === _entriesRev && richer))
+                                : richer
+      );
+      if (useIdb) {
         userEntries = parsed.map(function(e) { return validateEntry(e); }).filter(Boolean);
+        _entriesRev = Math.max(_entriesRev, idbRev);
         invalidateEntriesCache();
-        try { localStorage.setItem('philo-user-entries', JSON.stringify(userEntries)); } catch(e) {}
+        try {
+          localStorage.setItem('philo-user-entries', JSON.stringify(userEntries));
+          localStorage.setItem('philo-entries-rev', String(_entriesRev));
+        } catch(e) {}
         updateEntryCount();
         buildAlphaNav();
         buildFilterBar();
         renderEntryList();
         if (!currentArticle) showWelcome();
+      } else if (idbRev > _entriesRev) {
+        _entriesRev = idbRev;
       }
     }
     
@@ -5547,7 +5745,9 @@ async function restoreFromIDB() {
     var idbCTN = await PhiloDB.get('philo-all-custom-tags');
     if (idbCTN) { try { allCustomTagNames = safeParse(idbCTN, []); try { localStorage.setItem('philo-all-custom-tags', idbCTN); } catch(e) {} } catch(e) {} }
     applyAppearance();
+    // Now that userEntries reflects the freshest store, maintenance that SAVES is safe.
     deduplicateEntries(); // Clean up any duplicates from IDB/localStorage sync
+    try { securityRevalidateEntries(); } catch(e) { console.warn('secRevalidate:', e); }
   } catch (e) {
   }
 }
@@ -5556,9 +5756,13 @@ async function restoreFromIDB() {
 // One-time security migration: re-run validateEntry (which sanitizes content via
 // DOMPurify) over locally stored entries. Older app versions may have persisted HTML
 // cleaned only by the former regex pass, or localStorage may have been tampered with.
+// v4: strips runtime search caches wrongly persisted by an earlier build, and removes the
+// duplicated _wikiSource on wiki entries (the cleaned source is derived from _wikiRaw on
+// demand), shrinking the stored payload by roughly a third. Runs AFTER restoreFromIDB so it
+// never saves a stale localStorage copy over the complete IndexedDB one.
 // Gated by a version flag so it runs once, not on every startup.
 function securityRevalidateEntries() {
-  var FLAG = 'philo-sec-revalidated-v2';
+  var FLAG = 'philo-sec-revalidated-v4';
   if (lsGet(FLAG, '') === '1') return;
   if (Array.isArray(userEntries) && userEntries.length) {
     var before = userEntries.length;
@@ -5616,8 +5820,11 @@ function init() {
         escapeHtml(String((ev.error && ev.error.stack) || '(pas de pile)')) + '</pre></div>';
     }
   });
-  try { securityRevalidateEntries(); } catch(e) { console.warn('secRevalidate:', e); }
-  try { deduplicateEntries(); } catch(e) { console.warn('dedup:', e); }
+  // NOTE: securityRevalidateEntries() and deduplicateEntries() both call saveUserEntries()
+  // and therefore MUST NOT run before restoreFromIDB() has completed: at this point
+  // userEntries may be a stale localStorage copy (the full library exceeds the localStorage
+  // quota), and saving it would overwrite the complete IndexedDB copy. Both are invoked at
+  // the end of restoreFromIDB() instead.
   try { initTheme(); } catch(e) { console.warn('initTheme:', e); }
   try { applyAppearance(); } catch(e) { console.warn('applyAppearance:', e); }
   if (highlightMode) document.body.classList.add('highlight-mode');
@@ -5724,6 +5931,10 @@ function init() {
   
   // First-launch onboarding
   showOnboarding();
+
+  // Warm the search caches in the background so the first search is instant. Delayed so it
+  // runs after the initial render and any IndexedDB restore have settled.
+  setTimeout(prewarmSearchCaches, 1500);
   
   // Silent background update check (10s after startup)
   setTimeout(function() {
@@ -5732,11 +5943,14 @@ function init() {
   
   // Desktop search with suggestions
   const searchEl = document.getElementById('searchInput');
+  // The suggestions dropdown updates immediately (cheap now), but rebuilding the full
+  // filtered list on every keystroke is wasteful, so it is debounced.
+  const debouncedRenderList = debounce(renderEntryList, 130);
   searchEl.addEventListener('input', (e) => {
     searchQuery = e.target.value.trim().slice(0, 200);
     activeLetterFilter = null;
     updateAlphaNav();
-    renderEntryList();
+    debouncedRenderList();
     showSearchSuggestions(searchQuery);
   });
   searchEl.addEventListener('focus', () => {
@@ -6033,11 +6247,8 @@ function renderEntryList() {
 function getFilteredEntries() {
   let entries = getAllEntries();
   if (searchQuery) {
-    entries = entries.filter(e => {
-      // Search in all fields including full article content
-      const target = `${e.term} ${e.category} ${e.definition} ${e.tags.join(' ')} ${e.etymology} ${e.content.replace(/<[^>]+>/g, '')}`;
-      return fuzzyMatch(searchQuery, target);
-    });
+    const q = buildQuery(searchQuery);
+    entries = entries.filter(e => fuzzyMatchNorm(q.n, buildSearchBlob(e), q.words, q.synonyms));
   }
   if (activeLetterFilter) entries = entries.filter(e => e.letter === activeLetterFilter);
   if (activeCategoryFilter) entries = entries.filter(e => e.category.includes(activeCategoryFilter));
@@ -6185,12 +6396,12 @@ function showArticle(id) {
     </div>` : '';
   
   // Reading time (200 words/min for French)
-  const wordCount = entry.content.replace(/<[^>]+>/g, '').split(/\s+/).length;
+  const wordCount = plainContent(entry).split(/\s+/).length;
   const readMin = Math.max(1, Math.round(wordCount / 200));
   
   // Quality indicators
   const hasRefs = entry.refs && entry.refs.length > 0;
-  const wikiSrc = entry._wikiSource || '';
+  const wikiSrc = entryWikiSource(entry);
   const hasNotes = /<ref>/i.test(wikiSrc);
   const hasBiblio = /^=+\s*bibliographie\s*=+/im.test(wikiSrc);
   var qualityHints = [];
@@ -6650,9 +6861,10 @@ function openDrawer(tab) {
     setTimeout(() => {
       const input = document.querySelector('.drawer-search');
       input?.focus();
+      const debouncedDrawerSearch = debounce(() => applyDrawerSearch(allEntries), 130);
       input?.addEventListener('input', (e) => {
         drawerSearchState.query = e.target.value.trim();
-        applyDrawerSearch(allEntries);
+        debouncedDrawerSearch();
       });
     }, 400);
   } else if (tab === 'favorites') {
@@ -6684,10 +6896,8 @@ function drawerFilterCategory(cat, btn) {
 function applyDrawerSearch(allEntries) {
   let results = allEntries;
   if (drawerSearchState.query) {
-    results = results.filter(ent => {
-      const target = `${ent.term} ${ent.category} ${ent.definition} ${ent.tags.join(' ')} ${ent.etymology} ${ent.content.replace(/<[^>]+>/g, '')}`;
-      return fuzzyMatch(drawerSearchState.query, target);
-    });
+    const q = buildQuery(drawerSearchState.query);
+    results = results.filter(ent => fuzzyMatchNorm(q.n, buildSearchBlob(ent), q.words, q.synonyms));
   }
   if (drawerSearchState.category) {
     results = results.filter(ent => ent.category.includes(drawerSearchState.category));
@@ -6972,7 +7182,7 @@ function showStats() {
   var totalWords = 0;
   all.forEach(function(e) {
     if (readArticles.has(e.id)) {
-      totalWords += e.content.replace(/<[^>]+>/g, '').split(/\s+/).length;
+      totalWords += plainContent(e).split(/\s+/).length;
     }
   });
   var totalMins = Math.round(totalWords / 200);
@@ -6984,7 +7194,7 @@ function showStats() {
   // Quality metrics
   var withBiblio = 0, withNotes = 0;
   all.forEach(function(e) {
-    var ws = e._wikiSource || '';
+    var ws = entryWikiSource(e);
     if (/^=+\s*bibliographie\s*=+/im.test(ws)) withBiblio++;
     if (/<ref>/i.test(ws) || (e.refs && e.refs.length > 0)) withNotes++;
   });
@@ -8325,7 +8535,7 @@ function filterNotes(query) {
   
   if (matches.length === 0) {
     results.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--muted-light);font-size:0.88rem;">' +
-      (q ? 'Aucun résultat pour « ' + q + ' »' : 'Aucune note enregistrée') + '</div>';
+      (q ? 'Aucun résultat pour « ' + escapeHtml(q) + ' »' : 'Aucune note enregistrée') + '</div>';
     return;
   }
   
@@ -8455,14 +8665,30 @@ function validateEntry(e) {
   if (e.definition) e.definition = sanitizeHtml(String(e.definition));
   // Ensure safe types
   e.id = safeId(e.id);
+  // An empty id (all characters stripped) would collide in the EPUB export and in every
+  // per-article side map; a prototype key as id would let an import tamper with the
+  // prototype of those plain-object maps (notes, tags, highlights, scroll positions).
+  if (!e.id || dangerousKeys.indexOf(e.id) >= 0) return null;
   e.term = String(e.term).slice(0, 200);
   e.category = String(e.category || '').slice(0, 200);
   e.sortName = e.sortName ? String(e.sortName).slice(0, 200) : '';
   e.isPerson = !!e.isPerson;
   e.letter = String(e.letter || e.term.charAt(0).toUpperCase()).slice(0, 1);
   e.tags = Array.isArray(e.tags) ? e.tags.map(function(t) { return String(t).slice(0, 100); }) : [];
-  e.refs = Array.isArray(e.refs) ? e.refs.map(function(r) { return String(r).slice(0, 2000); }) : [];
+  e.refs = Array.isArray(e.refs) ? e.refs.map(function(r) { return sanitizeHtml(String(r).slice(0, 2000)); }) : [];
   e.related = Array.isArray(e.related) ? e.related.map(function(r) { return safeId(String(r)); }) : [];
+  // Wiki entries: the cleaned source is derivable from the raw one; keeping both nearly
+  // doubles the wikitext payload for no benefit. Legacy entries are slimmed here (the v4
+  // revalidation pass re-saves them), new imports no longer write the duplicate at all.
+  if (e._wikiRaw && e._wikiSource) delete e._wikiSource;
+  // Runtime search caches must never survive a round trip through storage or an import:
+  // a persisted _searchBlob reloaded under a matching generation would make search use
+  // the entry's content as it was at some earlier save, and a forged blob in an import
+  // file could make an entry findable under text it does not contain.
+  delete e._plainContent; delete e._pcGen;
+  delete e._searchBlob;   delete e._sbGen;
+  delete e._suggestBlob;  delete e._qbGen;
+  delete e._readTime;     delete e._rtGen;
   return e;
 }
 
@@ -9073,10 +9299,25 @@ function doEpubExport(btn) {
     letterGroups[l].push(e);
   });
   
+  // One filename per entry, deduplicated. Stripping non-alphanumerics can make two
+  // distinct ids collide (or become empty), which would put duplicate names in the ZIP
+  // and point several TOC links at the same page; a numeric suffix keeps them apart.
+  var epubFnames = {};
+  (function() {
+    var used = new Set();
+    entries.forEach(function(e, i) {
+      var base = 'art_' + (e.id.replace(/[^a-zA-Z0-9-]/g, '') || ('e' + i));
+      var name = base, n = 2;
+      while (used.has(name)) { name = base + '-' + n; n++; }
+      used.add(name);
+      epubFnames[e.id] = name + '.xhtml';
+    });
+  })();
+
   Object.keys(letterGroups).sort().forEach(function(l) {
     tocHtml += '<h2>' + l + '</h2>\n';
     letterGroups[l].forEach(function(e) {
-      tocHtml += '<div class="toc-entry"><a href="art_' + e.id.replace(/[^a-zA-Z0-9-]/g,'') + '.xhtml">' + escapeHtml(e.term) + '</a></div>\n';
+      tocHtml += '<div class="toc-entry"><a href="' + epubFnames[e.id] + '">' + escapeHtml(e.term) + '</a></div>\n';
     });
   });
   tocHtml += '</body></html>';
@@ -9084,36 +9325,44 @@ function doEpubExport(btn) {
   // Build article pages
   var articleFiles = [];
   entries.forEach(function(e, i) {
-    var epubSafeId = e.id.replace(/[^a-zA-Z0-9-]/g,'');
-    var fname = 'art_' + epubSafeId + '.xhtml';
+    var fname = epubFnames[e.id];
     
-    // Clean HTML for XHTML compliance
-    var body = (e.content || e.definition || '').replace(/<br>/g, '<br/>').replace(/<hr>/g, '<hr/>');
-    // Remove onclick handlers
-    body = body.replace(/\s*onclick="[^"]*"/g, '');
-    // Remove spans with class but keep text
+    // Resolve inline note markers (<x-ref n="N">) into real footnote calls + a notes
+    // section, instead of leaving non-standard <x-ref> tags in the EPUB. buildFootnotes
+    // sanitizes refs internally and e.content is already sanitized at import, so the
+    // pieces are safe; we only strip the SPA-only onclick handlers and fix void tags for
+    // XHTML. (A final sanitizeHtml pass is avoided here: its allow-list omits <div>, which
+    // would dissolve the footnote-section structure.)
+    var foot = buildFootnotes(e.content || e.definition || '', e.refs || []);
+    var body = (foot.html + foot.footnotesHtml)
+      .replace(/\s*onclick="[^"]*"/g, '')
+      .replace(/<br>/g, '<br/>')
+      .replace(/<hr>/g, '<hr/>');
+    // Unwrap display-only decorations that have no place in an EPUB
     body = body.replace(/<span class="lettrine">([^<]*)<\/span>/g, '$1');
     body = body.replace(/<span class="auto-link[^"]*">([^<]*)<\/span>/g, '$1');
     body = body.replace(/<a class="auto-link"[^>]*>([^<]*)<\/a>/g, '$1');
-    
-    // Refs
-    var refsHtml = '';
-    if (e.refs && e.refs.length > 0) {
-      refsHtml = '<div class="refs"><h3>Références</h3><ul>' +
-        e.refs.map(function(r) { return '<li>' + escapeHtml(r.replace(/<[^>]+>/g, '')) + '</li>'; }).join('') +
-        '</ul></div>';
-    }
-    
+    // XHTML/XML predefines only & < > " ' as named entities. Convert the others the
+    // parser can emit (chiefly &nbsp;) to numeric references so the EPUB stays
+    // well-formed; drop any unknown named entity rather than break the document.
+    body = body.replace(/&([a-zA-Z][a-zA-Z0-9]*);/g, function(m, name) {
+      if (name === 'amp' || name === 'lt' || name === 'gt' || name === 'quot' || name === 'apos') return m;
+      var map = { nbsp:160, copy:169, laquo:171, raquo:187, hellip:8230, mdash:8212, ndash:8211, lsquo:8216, rsquo:8217, ldquo:8220, rdquo:8221, oelig:339, times:215, deg:176, eacute:233, egrave:232, agrave:224, ccedil:231 };
+      return map[name] != null ? '&#' + map[name] + ';' : '';
+    });
+
     var html = '<?xml version="1.0" encoding="UTF-8"?>\n' +
       '<!DOCTYPE html>\n<html xmlns="http://www.w3.org/1999/xhtml">\n<head>' +
       '<title>' + escapeHtml(e.term) + '</title>' +
       '<link rel="stylesheet" type="text/css" href="style.css"/></head>\n<body>\n' +
       '<h1>' + escapeHtml(e.term) + '</h1>\n' +
       (e.category ? '<div class="category">' + escapeHtml(e.category) + '</div>\n' : '') +
-      body + '\n' + refsHtml +
+      body +
       '</body></html>';
     
-    articleFiles.push({ name: fname, content: html, id: epubSafeId, term: e.term });
+    // The manifest/spine id is derived from the deduplicated filename: unique by
+    // construction, and a valid XML NCName since it always starts with 'art_'.
+    articleFiles.push({ name: fname, content: html, id: fname.replace(/\.xhtml$/, ''), term: e.term });
   });
   
   // OPF manifest
@@ -9418,7 +9667,11 @@ async function checkForUpdates() {
   var fillEl = document.getElementById('updateProgressFill');
   var resultsEl = document.getElementById('updateResults');
   var actionsEl = document.getElementById('updateActions');
-  
+
+  // Same guard as the mass import: reflect the durable IndexedDB copy before deciding what
+  // to check, so a localStorage wipe does not make it report "no imported articles".
+  await ensureEntriesFromIDB();
+
   // Collect wiki-sourced entries with their titles
   var wikiEntries = userEntries.filter(function(e) {
     return e._userEntry && (e._wikiTitle || e._wikiSource);
@@ -9596,7 +9849,7 @@ async function updateSelectedArticles() {
             userEntries[entryIdx].refs = parsed.refs;
             userEntries[entryIdx].tags = guessTags(wikitext).split(', ').filter(Boolean);
             userEntries[entryIdx].category = updateWikiCat;
-            userEntries[entryIdx]._wikiSource = wikitext;
+            delete userEntries[entryIdx]._wikiSource; // derived from _wikiRaw on demand
             userEntries[entryIdx]._wikiRaw = rawContent;
             userEntries[entryIdx]._wikiRevId = rev.revid || null;
             userEntries[entryIdx]._wikiTimestamp = rev.timestamp || null;
@@ -9613,8 +9866,8 @@ async function updateSelectedArticles() {
     await new Promise(function(r) { setTimeout(r, 150); });
   }
   
-  // Save
-  saveUserEntries();
+  // Save (awaited: commit confirmed before reporting success)
+  await saveUserEntries();
   PhiloDB.set('philo-last-update-check', new Date().toISOString());
   try { localStorage.setItem('philo-last-update-check', new Date().toISOString()); } catch(e) {}
   

@@ -54,7 +54,12 @@ if [ -z "$ANDROID_HOME" ] && [ -z "$ANDROID_SDK_ROOT" ]; then
 fi
 log "Environnement vérifié"
 
-[ ! -d "node_modules" ] && npm install
+if [ -f package-lock.json ]; then
+  npm ci
+else
+  warn "package-lock.json absent — installation non reproductible. Lance 'npm install' une fois puis commit le package-lock.json généré."
+  npm install
+fi
 log "Dépendances OK"
 
 if [ -d "android" ] && grep -rq "splashBackground" android/app/src/main/res/ 2>/dev/null; then
@@ -208,7 +213,9 @@ find "$ANDROID_RES" -name "*.xml" -exec grep -l "splashBackground" {} \; 2>/dev/
 done
 log "Personnalisations appliquées"
 
-cd android && ./gradlew clean 2>/dev/null && cd ..
+if ! (cd android && ./gradlew clean); then
+  warn "gradlew clean a échoué — poursuite du build sans nettoyage complet"
+fi
 
 BUILD_TYPE="${1:-debug}"
 if [ "$BUILD_TYPE" = "release" ]; then
